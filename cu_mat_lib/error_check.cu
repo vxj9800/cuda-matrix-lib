@@ -6,56 +6,57 @@ static void HandleError( cudaError_t err,const char *file,int line )
         throw 1;
     }
 }
+
+static void HandleError(cublasStatus_t err,const char *file,int line )
+{
+    switch (err)
+    {
+        case CUBLAS_STATUS_SUCCESS:
+        	return;
+
+        case CUBLAS_STATUS_NOT_INITIALIZED:
+            std::cout << "CUBLAS_STATUS_NOT_INITIALIZEDn in " << file << " at line " << line << "." << endl;
+            throw 1;
+
+        case CUBLAS_STATUS_INVALID_VALUE:
+            std::cout << "CUBLAS_STATUS_INVALID_VALUE" << file << " at line " << line << "." << endl;
+            throw 1;
+
+        case CUBLAS_STATUS_ARCH_MISMATCH:
+            std::cout << "CUBLAS_STATUS_ARCH_MISMATCH" << file << " at line " << line << "." << endl;
+            throw 1;
+
+        case CUBLAS_STATUS_INTERNAL_ERROR:
+            std::cout << "CUBLAS_STATUS_INTERNAL_ERROR" << file << " at line " << line << "." << endl;
+            throw 1;
+    }
+   return;
+}
+
+static void HandleError(cusolverStatus_t err,const char *file,int line )
+{
+    switch (err)
+    {
+        case CUSOLVER_STATUS_SUCCESS:
+        	return;
+
+        case CUSOLVER_STATUS_NOT_INITIALIZED:
+            std::cout << "CUSOLVER_STATUS_NOT_INITIALIZED" << file << " at line " << line << "." << endl;
+            throw 1;
+
+        case CUSOLVER_STATUS_INVALID_VALUE:
+            std::cout << "CUSOLVER_STATUS_INVALID_VALUE" << file << " at line " << line << "." << endl;
+            throw 1;
+
+        case CUSOLVER_STATUS_ARCH_MISMATCH:
+            std::cout << "CUSOLVER_STATUS_ARCH_MISMATCH" << file << " at line " << line << "." << endl;
+            throw 1;
+
+        case CUSOLVER_STATUS_INTERNAL_ERROR:
+            std::cout << "CUSOLVER_STATUS_INTERNAL_ERROR" << file << " at line " << line << "." << endl;
+            throw 1;
+    }
+   return;
+}
+
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
-
-// static void CUBLAS_CALL(cublasStatus_t error)
-// {
-//     switch (error)
-//     {
-//         case CUBLAS_STATUS_SUCCESS:
-//         	return;
-
-//         case CUBLAS_STATUS_NOT_INITIALIZED:
-//             std::cout << "CUBLAS_STATUS_NOT_INITIALIZED";
-//             return;
-
-//         case CUBLAS_STATUS_INVALID_VALUE:
-//             std::cout << "CUBLAS_STATUS_INVALID_VALUE";
-//             return;
-
-//         case CUBLAS_STATUS_ARCH_MISMATCH:
-//             std::cout << "CUBLAS_STATUS_ARCH_MISMATCH";
-//             return;
-
-//         case CUBLAS_STATUS_INTERNAL_ERROR:
-//             std::cout << "CUBLAS_STATUS_INTERNAL_ERROR";
-//             return;
-//     }
-//    return;
-// }
-
-// static void CUSOLVER_CALL(cusolverStatus_t error)
-// {
-//     switch (error)
-//     {
-//         case CUSOLVER_STATUS_SUCCESS:
-//         	return;
-
-//         case CUSOLVER_STATUS_NOT_INITIALIZED:
-//             std::cout << "CUSOLVER_STATUS_NOT_INITIALIZED";
-//             return;
-
-//         case CUSOLVER_STATUS_INVALID_VALUE:
-//             std::cout << "CUSOLVER_STATUS_INVALID_VALUE";
-//             return;
-
-//         case CUSOLVER_STATUS_ARCH_MISMATCH:
-//             std::cout << "CUSOLVER_STATUS_ARCH_MISMATCH";
-//             return;
-
-//         case CUSOLVER_STATUS_INTERNAL_ERROR:
-//             std::cout << "CUSOLVER_STATUS_INTERNAL_ERROR";
-//             return;
-//     }
-//    return;
-// }

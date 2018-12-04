@@ -6,4 +6,4 @@
 `error_check.cu` has supporting functions for error handelling.  
 
 `parent.cu` can be compiled with following command.
-`nvcc parent.cu -lcublas -lcurand`
+`nvcc parent.cu -lcublas -lcurand -lcusolver`

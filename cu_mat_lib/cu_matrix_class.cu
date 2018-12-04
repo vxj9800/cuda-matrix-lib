@@ -18,7 +18,8 @@ class cu_matrix
         void get();                                                         // Print data
 
         /***** Supported external functions *****/
-        friend cu_matrix randn(size_t r, size_t c);
+        friend cu_matrix randn(size_t r, size_t c);                         // Generate a matrix with normalized random numbers
+        friend cu_matrix mld(const cu_matrix a, const cu_matrix b);         // Matrix left divide operator
 
         /***** Destructor *****/
         ~cu_matrix()                                                        // Destructor to free the memory
