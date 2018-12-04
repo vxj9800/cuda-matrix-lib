@@ -12,8 +12,7 @@ int main()
 
     cu_matrix a = randn(4,4);
     cu_matrix b = randn(4,1);
-    cu_matrix x = mld(a,b);
-    a.get(); b.get(); x.get();
+    a.get(); b.get(); mld(a,b).get();
     
     return (0);
 }
