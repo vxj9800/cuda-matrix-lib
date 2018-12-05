@@ -24,7 +24,7 @@ class cu_matrix
         /***** Destructor *****/
         ~cu_matrix()                                                        // Destructor to free the memory
         {
-            cout << "Destructor called." << endl;
+            // cout << "Destructor called." << endl;
             HANDLE_ERROR( cudaFree(p) );
         }
 };
@@ -48,23 +48,12 @@ cu_matrix::cu_matrix(const initializer_list<initializer_list<double>> mat) : row
     // Check if the number of elements in each row are same.
     for(int i = 0; i<rows; ++i)
     {
-        if ((mat.begin()+i)->size()!=cols)
-        {
-            cout << "Error: Number of elements in each row must be same.";
-            try{
-                throw 1;
-            }
-            catch(const int n){}
-        }
+        confirm((mat.begin()+i)->size()!=cols,"Error: Object initialization failed. Number of elements in each row must be same.");
     }
 
     // Copy input array to a new matrix while making it column major.
     double *m = new double[rows*cols]();    // Allocate space on CPU memory.
-    if (!m)                                 // Check proper allocation.
-    {
-    cout << "Memory allocation failed\n";
-    throw 1;
-    }
+    confirm(!m,"Error: Memory allocation failed while initializing the object."); // Check proper allocation.                              
 
     for(int i = 0; i<rows; ++i)
     {
@@ -92,11 +81,7 @@ cu_matrix::cu_matrix(size_t r, size_t c) : rows(r), cols(c)                     
 /***********************************************************************************************************************/
 cu_matrix cu_matrix::operator*(const cu_matrix b)
 {
-    if (cols != b.rows)
-    {
-		std::cout << "Error : Inner matrix dimensions must agree.\n";
-		throw 1;
-    }
+    confirm(cols != b.rows,"Error : Matrix multiplication is not possible. Inner matrix dimensions must agree.")
     cu_matrix c(rows,b.cols);
     double alf = 1.0, bet = 0;
     cublasHandle_t handle;
@@ -112,11 +97,7 @@ cu_matrix cu_matrix::operator*(const cu_matrix b)
 void cu_matrix::get()   // Print data
 {
     double *m = new double[rows*cols]();    // Allocate space on CPU memory.
-    if (!m)                                 // Check proper allocation.
-    {
-    cout << "Memory allocation failed.\n";
-    throw 1;
-    }
+    confirm(!m,"Error: Memory allocation failed in 'get()'.") // Check proper allocation.
 
     // Copy data from GPU to CPU.
     HANDLE_ERROR( cudaMemcpy(m,p,rows*cols*sizeof(double),cudaMemcpyDeviceToHost) );
