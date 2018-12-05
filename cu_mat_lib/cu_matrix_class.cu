@@ -23,7 +23,8 @@ class cu_matrix
 
         /***** Destructor *****/
         ~cu_matrix()                                                        // Destructor to free the memory
-        { 
+        {
+            cout << "Destructor called." << endl;
             HANDLE_ERROR( cudaFree(p) );
         }
 };
@@ -50,7 +51,10 @@ cu_matrix::cu_matrix(const initializer_list<initializer_list<double>> mat) : row
         if ((mat.begin()+i)->size()!=cols)
         {
             cout << "Error: Number of elements in each row must be same.";
-            throw 1;
+            try{
+                throw 1;
+            }
+            catch(const int n){}
         }
     }
 
