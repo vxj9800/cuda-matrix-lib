@@ -11,7 +11,7 @@ cu_matrix randn(size_t r = 1, size_t c = 1)
 
 cu_matrix mld(const cu_matrix a, const cu_matrix b) // Adapted from CUSOLVER_Library.pdf QR examples
 {
-    confirm(a.rows != b.rows,"Error: 'mld()' operation cannot be performed. Matrix dimensions must agree.")
+    confirm(a.n_rows != b.n_rows,"Error: 'mld()' operation cannot be performed. Matrix dimensions must agree.")
 
     cu_matrix A = a, B = b; // Copy current matrix to a new matrix for calculations.
     double *d_tau = NULL;
@@ -25,29 +25,29 @@ cu_matrix mld(const cu_matrix a, const cu_matrix b) // Adapted from CUSOLVER_Lib
     HANDLE_ERROR( cublasCreate(&cublas_handle) );
 
     // step 2: allocate required extra memory on GPU.
-    HANDLE_ERROR( cudaMalloc((void**)&d_tau,sizeof(double)*A.cols) );
+    HANDLE_ERROR( cudaMalloc((void**)&d_tau,sizeof(double)*A.n_cols) );
     HANDLE_ERROR( cudaMalloc((void**)&devInfo,sizeof(int)) );
 
     // step 3: query working space of geqrf and ormqr
-    HANDLE_ERROR( cusolverDnDgeqrf_bufferSize(cusolver_handle,A.rows,A.cols,A.p,A.rows,&lwork) );
+    HANDLE_ERROR( cusolverDnDgeqrf_bufferSize(cusolver_handle,A.n_rows,A.n_cols,A.p,A.n_rows,&lwork) );
     HANDLE_ERROR( cudaMalloc((void**)&d_work, sizeof(double)*lwork) );
 
     // step 4: compute QR factorization
-    HANDLE_ERROR( cusolverDnDgeqrf(cusolver_handle,A.rows,A.cols,A.p,A.rows,d_tau,d_work,lwork,devInfo) );
+    HANDLE_ERROR( cusolverDnDgeqrf(cusolver_handle,A.n_rows,A.n_cols,A.p,A.n_rows,d_tau,d_work,lwork,devInfo) );
     HANDLE_ERROR( cudaDeviceSynchronize() );
     // check if QR is good or not
     HANDLE_ERROR( cudaMemcpy(&info_gpu, devInfo, sizeof(int),cudaMemcpyDeviceToHost) );
     confirm(info_gpu != 0,"Error: 'mld()' operation cannot be performed. QR decomposition failed.");
 
     // step 5: compute Q^T*B (CUSOLVER documentation has typos. Follow LAPACK documentation.)
-    HANDLE_ERROR( cusolverDnDormqr(cusolver_handle,CUBLAS_SIDE_LEFT,CUBLAS_OP_T,B.rows,B.cols,A.cols,A.p,A.rows,d_tau,B.p,B.rows,d_work,lwork,devInfo) );
+    HANDLE_ERROR( cusolverDnDormqr(cusolver_handle,CUBLAS_SIDE_LEFT,CUBLAS_OP_T,B.n_rows,B.n_cols,A.n_cols,A.p,A.n_rows,d_tau,B.p,B.n_rows,d_work,lwork,devInfo) );
     HANDLE_ERROR( cudaDeviceSynchronize() );
     // check if QR is good or not
     HANDLE_ERROR( cudaMemcpy(&info_gpu, devInfo, sizeof(int),cudaMemcpyDeviceToHost) );
     confirm(info_gpu != 0,"Error: 'mld()' operation cannot be performed. QR decomposition failed.");
 
     // step 6: compute x = R \ (Q^T*B)
-    HANDLE_ERROR( cublasDtrsm(cublas_handle,CUBLAS_SIDE_LEFT,CUBLAS_FILL_MODE_UPPER,CUBLAS_OP_N,CUBLAS_DIAG_NON_UNIT,A.cols,B.cols,&alf,A.p,A.rows,B.p,A.cols) );
+    HANDLE_ERROR( cublasDtrsm(cublas_handle,CUBLAS_SIDE_LEFT,CUBLAS_FILL_MODE_UPPER,CUBLAS_OP_N,CUBLAS_DIAG_NON_UNIT,A.n_cols,B.n_cols,&alf,A.p,A.n_rows,B.p,A.n_cols) );
     HANDLE_ERROR( cudaDeviceSynchronize() );
 
     // Free resources

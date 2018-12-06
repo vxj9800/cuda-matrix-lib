@@ -5,7 +5,7 @@ using namespace std;
 
 int main()
 {
-    cu_matrix a = {{1,2,3,4},{4,5,6}};
+    cu_matrix a = {{1,2,3},{4,5,6}};
     // cu_matrix b = {{1,2},{4,5}};
     // cu_matrix c = a*b;
     // a.get(); b.get(); c.get();
