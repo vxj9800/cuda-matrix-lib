@@ -8,7 +8,7 @@
 // Macro definitions
 #define confirm(cond,err)               \
 try{                                    \
-    if (cond)                           \
+    if(!(cond))                         \
     {                                   \
         std::cout << err << endl;       \
         throw 1;                        \

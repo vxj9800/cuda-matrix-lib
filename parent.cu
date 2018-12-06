@@ -5,13 +5,14 @@ using namespace std;
 
 int main()
 {
-    cu_matrix a = {{1,2,3},{4,5,6}};
-    // cu_matrix b = {{1,2},{4,5}};
-    // cu_matrix c = a*b;
+    cu_mat a = {{1,2,3},{4,5,6}};
+    a(2,2).get();
+    // cu_mat b = {{1,2},{4,5}};
+    // cu_mat c = a*b;
     // a.get(); b.get(); c.get();
 
-    // cu_matrix a = randn(4,4);
-    // cu_matrix b = randn(4,1);
+    // cu_mat a = randn(4,4);
+    // cu_mat b = randn(4,1);
     // a.get(); b.get(); mld(a,b).get();
     
     return (0);
