@@ -6,15 +6,16 @@
 #include <cusolverDn.h>
 
 // Macro definitions
-#define confirm(cond,err)               \
-try{                                    \
-    if(!(cond))                         \
-    {                                   \
-        std::cout << err << endl;       \
-        throw 1;                        \
-    }                                   \
-}                                       \
-catch(int n){}
+#define look_for_errors try{
+
+#define report_errors }catch(int n){}
+
+#define confirm(cond,err)           \
+if(!(cond))                         \
+{                                   \
+    std::cout << "\a" << err << endl;       \
+    throw 1;                        \
+}
 
 // Include cu_matrix files
 #include "cu_error_list.cu"
