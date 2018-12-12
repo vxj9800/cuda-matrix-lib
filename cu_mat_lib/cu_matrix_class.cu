@@ -24,7 +24,9 @@ class cu_mat
 
         /***** Supported external functions *****/
         friend cu_mat randn(size_t r, size_t c);                                         // Generate a matrix with normalized random numbers
-        friend cu_mat mld(const cu_mat a, const cu_mat b);                         // Matrix left divide operator
+        friend cu_mat mld(const cu_mat a, const cu_mat b);                               // Matrix left divide operator
+        friend cu_mat eye(size_t n);                                           // Generate a square identity matrix
+        friend cu_mat eye(size_t r, size_t c);                                           // Generate a non-square identity matrix
 
         /***** Destructor *****/
         ~cu_mat()                                                                        // Destructor to free the memory
@@ -79,6 +81,7 @@ cu_mat::cu_mat(const initializer_list<initializer_list<double>> mat) : n_rows(ma
 cu_mat::cu_mat(size_t r, size_t c) : n_rows(r), n_cols(c)                                      // Two argument constructor
 {
     HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) );
+    HANDLE_ERROR( cudaMemset(p,0,n_rows*n_cols*sizeof(double)) );
 }
 /***********************************************************************************************************************/
 
@@ -110,11 +113,29 @@ cu_mat cu_mat::operator*(const cu_mat b)
 
 
 /**********************************************************************************************************************/
-// cu_mat cu_mat::operator+(const cu_mat b);                             // Matrix addition operator
-// {
-//     confirm((n_rows == b.n_rows) && (n_cols != b.n_cols),"Error : Matrix addition is not possible. Matrices must have same dimensions.");
-
-// }
+__global__ void addition(double* a, double* b, double* c, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    c[idx] = a[idx] + b[idx];
+}
+cu_mat cu_mat::operator+(const cu_mat b)                             // Matrix addition operator
+{
+    confirm((n_rows == b.n_rows) && (n_cols == b.n_cols),"Error : Matrix addition is not possible. Matrices must have same dimensions.");
+    cu_mat c(n_rows,n_cols);
+    size_t n_ele = n_rows*n_cols;
+    size_t n_threads = block_dim(n_ele);
+    addition<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    // cu_mat c = b;
+    // cu_mat B = eye(n_cols);
+    // double alf = 1.0, bet = 1.0;
+    // cublasHandle_t handle;
+	// cublasCreate(&handle);
+    // // gemm calculates C:=alf*A*B+beta*C. For addition here, B has to be equal to eye(A.n_cols).
+	// cublasDgemm(handle,CUBLAS_OP_N,CUBLAS_OP_N,n_rows,B.n_cols,n_cols,&alf,p,n_rows,B.p,n_cols,&bet,c.p,n_rows);
+    // cublasDestroy(handle);
+    return c;
+}
 /**********************************************************************************************************************/
 
 

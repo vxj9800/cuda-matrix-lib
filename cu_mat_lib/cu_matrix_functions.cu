@@ -9,6 +9,32 @@ cu_mat randn(size_t r = 1, size_t c = 1)
     return a;
 }
 
+__global__ void eye_mat(double* p, const int r, const int n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    {
+        p[idx*r+idx] = 1.0;
+    }
+}
+
+cu_mat eye(size_t n)
+{
+    cu_mat temp(n,n);
+    size_t n_threads = block_dim(n);
+    eye_mat<<<n/n_threads,n_threads>>>(temp.p,n,n);
+    return temp;
+}
+
+cu_mat eye(size_t r, size_t c)
+{
+    cu_mat temp(r,c);
+    size_t n_ele = min(r,c);
+    size_t n_threads = block_dim(n_ele);
+    eye_mat<<<n_ele/n_threads,n_threads>>>(temp.p,r,n_ele);
+    return temp;
+}
+
 cu_mat mld(const cu_mat a, const cu_mat b) // Adapted from CUSOLVER_Library.pdf QR examples
 {
     confirm(a.n_rows == b.n_rows,"Error: 'mld()' operation cannot be performed. Matrix dimensions must agree.")

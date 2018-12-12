@@ -10,14 +10,15 @@
 
 #define report_errors }catch(int n){}
 
-#define confirm(cond,err)           \
-if(!(cond))                         \
-{                                   \
+#define confirm(cond,err)                   \
+if(!(cond))                                 \
+{                                           \
     std::cout << "\a" << err << endl;       \
-    throw 1;                        \
+    throw 1;                                \
 }
 
 // Include cu_matrix files
+#include "block_dim.cu"
 #include "cu_error_list.cu"
 #include "error_check.cu"
 #include "cu_matrix_class.cu"
