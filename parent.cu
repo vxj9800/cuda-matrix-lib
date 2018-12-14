@@ -9,9 +9,9 @@ int main()
     clock_t begin = clock();
 
     look_for_errors;
-    cu_mat a = randn(5000,5000);
-    cu_mat b = randn(5000,5000);
-    cu_mat c = a+b;
+    cu_mat a = eye(1);
+    cu_mat b = randn();
+    a.get(); b.get(); (a-b).get();
     // cu_mat a = {{1,2,3,4},{4,5,6}};
     // a.get();
     // cu_mat b = {{1,2},{4,5}};

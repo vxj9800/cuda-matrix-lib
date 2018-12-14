@@ -24,10 +24,9 @@ class cu_mat
         size_t cols();                                                                      // Get number of columns
 
         /***** Supported external functions *****/
-        friend cu_mat randn(size_t r, size_t c);                                         // Generate a matrix with normalized random numbers
-        friend cu_mat mld(const cu_mat a, const cu_mat b);                               // Matrix left divide operator
-        friend cu_mat eye(size_t n);                                           // Generate a square identity matrix
-        friend cu_mat eye(size_t r, size_t c);                                           // Generate a non-square identity matrix
+        friend cu_mat randn(const size_t r, const size_t c);                                         // Generate a matrix with normalized random numbers
+        friend cu_mat mld(const cu_mat a, const cu_mat b);                                          // Matrix left divide operator
+        friend cu_mat eye(const size_t r, const size_t c);                                           // Generate a non-square identity matrix
 
         /***** Destructor *****/
         ~cu_mat()                                                                        // Destructor to free the memory

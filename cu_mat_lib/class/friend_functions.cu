@@ -1,14 +1,23 @@
-cu_mat randn(size_t r = 1, size_t c = 1)
+/***************************************************************************************************************************/
+cu_mat randn(const size_t r = 1, const size_t c = 1)
 {
-    cu_mat a(r,c);
+    size_t r_new = r, c_new = c;
+    if ((r%2!=0)&&(c%2!=0))
+    {
+        r_new = r+1; c_new = c+1;
+    }
+    cu_mat a(r_new,c_new);
     curandGenerator_t prng;
 	HANDLE_ERROR( curandCreateGenerator(&prng, CURAND_RNG_PSEUDO_XORWOW) );
 	HANDLE_ERROR( curandSetPseudoRandomGeneratorSeed(prng,(unsigned long long) clock()) );
-	HANDLE_ERROR( curandGenerateNormalDouble(prng,a.p,r*c,0.0,1.0) ); //The number of values requested has to be multiple of 2.
+	HANDLE_ERROR( curandGenerateNormalDouble(prng,a.p,a.n_rows*a.n_cols,0.0,1.0) ); //The number of values requested has to be multiple of 2.
     HANDLE_ERROR( curandDestroyGenerator(prng) );
-    return a;
+    return a(1,r,1,c);
 }
+/***************************************************************************************************************************/
 
+
+/***************************************************************************************************************************/
 __global__ void eye_mat(double* p, const int r, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -17,16 +26,7 @@ __global__ void eye_mat(double* p, const int r, const int n_ele)
         p[idx*r+idx] = 1.0;
     }
 }
-
-cu_mat eye(size_t n)
-{
-    cu_mat temp(n,n);
-    size_t n_threads = block_dim(n);
-    eye_mat<<<n/n_threads,n_threads>>>(temp.p,n,n);
-    return temp;
-}
-
-cu_mat eye(size_t r, size_t c)
+cu_mat eye(const size_t r, const size_t c)
 {
     cu_mat temp(r,c);
     size_t n_ele = min(r,c);
@@ -34,6 +34,11 @@ cu_mat eye(size_t r, size_t c)
     eye_mat<<<n_ele/n_threads,n_threads>>>(temp.p,r,n_ele);
     return temp;
 }
+cu_mat eye(const size_t n)
+{
+    return eye(n,n);
+}
+/***************************************************************************************************************************/
 
 cu_mat mld(const cu_mat a, const cu_mat b) // Adapted from CUSOLVER_Library.pdf QR examples
 {
