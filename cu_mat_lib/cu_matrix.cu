@@ -21,5 +21,4 @@ if(!(cond))                                 \
 #include "block_dim.cu"
 #include "cu_error_list.cu"
 #include "error_check.cu"
-#include "cu_matrix_class.cu"
-#include "cu_matrix_functions.cu"
+#include "./class/cu_matrix_class.cu"
