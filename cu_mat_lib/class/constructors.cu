@@ -37,10 +37,26 @@ cu_mat::cu_mat(const cu_mat &to_b_copied) : n_rows(to_b_copied.n_rows), n_cols(t
 /***********************************************************************************************************************/
 
 
-/************************************   Two argument constructor   ***********************************************/
-cu_mat::cu_mat(const size_t r, const size_t c) : n_rows(r), n_cols(c)
+/************************************   Two argument constructor with initialization   ***********************************************/
+__global__ void set_data(double* p, const double n, const double n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    p[idx] = n;
+}
+cu_mat::cu_mat(const size_t r, const size_t c, const double n=0) : n_rows(r), n_cols(c)
 {
     HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) );
-    HANDLE_ERROR( cudaMemset(p,0,n_rows*n_cols*sizeof(double)) );
+    if (n!=0)
+    {
+        size_t n_ele = n_rows*n_cols;
+        size_t n_threads = block_dim(n_ele);
+        set_data<<<n_ele/n_threads,n_threads>>>(p,n,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
+    }
+    else
+    {
+        HANDLE_ERROR( cudaMemset(p,0,n_rows*n_cols*sizeof(double)) );
+    }
 }
 /***********************************************************************************************************************/

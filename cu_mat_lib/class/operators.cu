@@ -31,6 +31,21 @@ cu_mat cu_mat::operator()(const size_t r_begin, const size_t r_end, const size_t
 /***********************************************************************************************************************/
 
 
+/***************************************   Assignment operator   **************************************/
+cu_mat& cu_mat::operator=(const cu_mat b)
+{
+    if ((n_rows!=b.n_rows) || (n_cols!=b.n_cols))
+    {
+        HANDLE_ERROR( cudaFree(p) );
+        n_rows = b.n_rows; n_cols = b.n_cols;
+        HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
+    }
+    HANDLE_ERROR( cudaMemcpy(p,b.p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy array from GPU to GPU
+    return *this;
+}
+/***********************************************************************************************************************/
+
+
 /***************************************   Matrix multiplication   **************************************/
 cu_mat cu_mat::operator*(const cu_mat b)
 {
@@ -84,3 +99,26 @@ cu_mat cu_mat::operator-(const cu_mat b)                             // Matrix n
     return c;
 }
 /**********************************************************************************************************************/
+
+
+/***************************************   Matrix power   **************************************/
+// cu_mat operator^(const unsigned int n);
+// {
+//     cu_mat tmp = *this;
+//     for(int i = 1; i<=n; ++i)
+//     {
+//         tmp = 
+//     }
+// }
+// cu_mat cu_mat::operator*(const cu_mat b)
+// {
+//     confirm(n_cols == b.n_rows,"Error : Matrix multiplication is not possible. Inner matrix dimensions must agree.");
+//     cu_mat c(n_rows,b.n_cols);
+//     double alf = 1.0, bet = 0;
+//     cublasHandle_t handle;
+// 	HANDLE_ERROR( cublasCreate(&handle) );
+// 	HANDLE_ERROR( cublasDgemm(handle,CUBLAS_OP_N,CUBLAS_OP_N,n_rows,b.n_cols,n_cols,&alf,p,n_rows,b.p,n_cols,&bet,c.p,n_rows) );
+//     HANDLE_ERROR( cublasDestroy(handle) );
+//     return c;
+// }
+/***********************************************************************************************************************/
