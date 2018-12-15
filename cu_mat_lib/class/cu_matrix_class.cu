@@ -24,7 +24,6 @@ class cu_mat
         void get();                                                                         // Print data
         size_t rows();                                                                      // Get number of rows
         size_t cols();                                                                      // Get number of columns
-        cu_mat trans();                                                                     // Transpose of the matrix
 
         /***** Supported external functions *****/
         friend cu_mat randn(const size_t r, const size_t c);                                         // Generate a matrix with normalized random numbers
@@ -32,6 +31,7 @@ class cu_mat
         friend cu_mat eye(const size_t r, const size_t c);                                           // Generate a non-square identity matrix
         friend cu_mat ones(const size_t r, const size_t c);                                          // Matrix with all values 1
         friend cu_mat zeros(const size_t r, const size_t c);                                        // Matrix with all values 0
+        friend cu_mat trans(const cu_mat a);                                                        // Transpose of the matrix
 
         /***** Destructor *****/
         ~cu_mat()                                                                        // Destructor to free the memory

@@ -117,3 +117,23 @@ cu_mat zeros(const size_t n)
     return zeros(n,n);
 }
 /***************************************************************************************************************************/
+
+
+/***************************************   Transpose current matrix   *****************************************/
+__global__ void mat_trans(double* a, double* b, size_t rows, size_t cols, double n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    size_t r = idx%rows, c = idx/rows;
+    if (idx<n_ele)
+    a[c+r*cols] = b[idx];
+}
+cu_mat trans(const cu_mat a)
+{
+    cu_mat tmp(a.n_cols,a.n_rows);
+    size_t n_ele = a.n_rows*a.n_cols;
+    size_t n_threads = block_dim(n_ele);
+    mat_trans<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,a.n_rows,a.n_cols,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
+    return tmp;
+}
+/***********************************************************************************************************************/
