@@ -102,23 +102,25 @@ cu_mat cu_mat::operator-(const cu_mat b)                             // Matrix n
 
 
 /***************************************   Matrix power   **************************************/
-// cu_mat operator^(const unsigned int n);
-// {
-//     cu_mat tmp = *this;
-//     for(int i = 1; i<=n; ++i)
-//     {
-//         tmp = 
-//     }
-// }
-// cu_mat cu_mat::operator*(const cu_mat b)
-// {
-//     confirm(n_cols == b.n_rows,"Error : Matrix multiplication is not possible. Inner matrix dimensions must agree.");
-//     cu_mat c(n_rows,b.n_cols);
-//     double alf = 1.0, bet = 0;
-//     cublasHandle_t handle;
-// 	HANDLE_ERROR( cublasCreate(&handle) );
-// 	HANDLE_ERROR( cublasDgemm(handle,CUBLAS_OP_N,CUBLAS_OP_N,n_rows,b.n_cols,n_cols,&alf,p,n_rows,b.p,n_cols,&bet,c.p,n_rows) );
-//     HANDLE_ERROR( cublasDestroy(handle) );
-//     return c;
-// }
+cu_mat cu_mat::operator^(const unsigned int n)
+{
+    confirm(n_rows == n_cols,"Error: Matrix has to be square for matrix power(^) to be executed.")
+    if (n == 0)
+    {
+        return eye(n_rows,n_cols);
+    }
+    else if (n == 1)
+    {
+        return *this;
+    }
+    else
+    {
+        cu_mat tmp = *this;
+        for(int i = 1; i<n; ++i)
+        {
+            tmp = tmp*(*this);
+        }
+        return tmp;
+    }
+}
 /***********************************************************************************************************************/

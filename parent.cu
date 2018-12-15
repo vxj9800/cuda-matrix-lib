@@ -10,9 +10,9 @@ int main()
 
     look_for_errors;
     cu_mat a = ones(3,5);
-    cu_mat b = randn(3,5);
+    cu_mat b = randn(3,3);
     a.get(); b.get();
-    a = b;
+    a = b^2;
     a.get();
     // cu_mat a = {{1,2,3,4},{4,5,6}};
     // a.get();

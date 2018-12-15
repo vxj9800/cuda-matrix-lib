@@ -24,6 +24,7 @@ class cu_mat
         void get();                                                                         // Print data
         size_t rows();                                                                      // Get number of rows
         size_t cols();                                                                      // Get number of columns
+        cu_mat trans();                                                                     // Transpose of the matrix
 
         /***** Supported external functions *****/
         friend cu_mat randn(const size_t r, const size_t c);                                         // Generate a matrix with normalized random numbers
