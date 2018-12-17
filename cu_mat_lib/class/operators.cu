@@ -105,11 +105,13 @@ cu_mat cu_mat::operator-(const cu_mat b)                             // Matrix n
 cu_mat cu_mat::operator^(const unsigned int n)
 {
     confirm(n_rows == n_cols,"Error: Matrix has to be square for matrix power(^) to be executed.")
-    if (n == 0)
-    {
-        return eye(n_rows,n_cols);
-    }
-    else if (n == 1)
+    confirm(n>0,"Error: So far, only non-zero natural numbers are supported for powers.")
+    // if (n == 0)
+    // {
+    //     return eye(n_rows,n_cols);
+    // }
+    // else if (n == 1)
+    if (n==1)
     {
         return *this;
     }

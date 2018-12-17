@@ -14,6 +14,7 @@ cu_mat randn(const size_t r = 1, const size_t c = 1)
     HANDLE_ERROR( curandDestroyGenerator(prng) );
     return a(1,r,1,c);
 }
+cu_mat randn(const size_t n){return randn(n,n);}
 /***************************************************************************************************************************/
 
 
@@ -34,10 +35,7 @@ cu_mat eye(const size_t r, const size_t c)
     eye_mat<<<n_ele/n_threads,n_threads>>>(temp.p,r,n_ele);
     return temp;
 }
-cu_mat eye(const size_t n)
-{
-    return eye(n,n);
-}
+cu_mat eye(const size_t n){return eye(n,n);}
 /***************************************************************************************************************************/
 
 
@@ -101,10 +99,7 @@ cu_mat ones(const size_t r, const size_t c)
 {
     return cu_mat(r,c,1);
 }
-cu_mat ones(const size_t n)
-{
-    return ones(n,n);
-}
+cu_mat ones(const size_t n){return ones(n,n);}
 /***************************************************************************************************************************/
 
 /*****************************************   Matrix with all values 0   *****************************************/
@@ -112,10 +107,7 @@ cu_mat zeros(const size_t r, const size_t c)
 {
     return cu_mat(r,c);
 }
-cu_mat zeros(const size_t n)
-{
-    return zeros(n,n);
-}
+cu_mat zeros(const size_t n){return zeros(n,n);}
 /***************************************************************************************************************************/
 
 
