@@ -82,7 +82,7 @@ cu_mat cu_mat::operator+(const cu_mat b)                             // Matrix a
 
 
 /***************************************   Matrix negation   ****************************************/
-__global__ void negate(double* a, double* b, double* c, size_t n_ele)
+__global__ void negate_mat(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
@@ -94,7 +94,7 @@ cu_mat cu_mat::operator-(const cu_mat b)                             // Matrix n
     cu_mat c(n_rows,n_cols);
     size_t n_ele = n_rows*n_cols;
     size_t n_threads = block_dim(n_ele);
-    negate<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    negate_mat<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return c;
 }
