@@ -1,3 +1,6 @@
+#ifndef _CU_MATRIX_CLASS_OPERATORS_INCLUDED_
+#define _CU_MATRIX_CLASS_OPERATORS_INCLUDED_
+
 /**************************************   Access single element of the matrix   *******************************************/
 cu_mat cu_mat::operator()(const size_t r, const size_t c)
 {
@@ -102,16 +105,17 @@ cu_mat cu_mat::operator-(const cu_mat b)                             // Matrix n
 
 
 /***************************************   Matrix power   **************************************/
+#include "friend_functions.cu"
 cu_mat cu_mat::operator^(const unsigned int n)
 {
     confirm(n_rows == n_cols,"Error: Matrix has to be square for matrix power(^) to be executed.")
-    confirm(n>0,"Error: So far, only non-zero natural numbers are supported for powers.")
-    // if (n == 0)
-    // {
-    //     return eye(n_rows,n_cols);
-    // }
-    // else if (n == 1)
-    if (n==1)
+    // confirm(n>=0,"Error: So far, only natural numbers are supported for powers.")
+    if (n == 0)
+    {
+        return eye(n_rows,n_cols);
+    }
+    else if (n == 1)
+    // if (n==1)
     {
         return *this;
     }
@@ -126,3 +130,5 @@ cu_mat cu_mat::operator^(const unsigned int n)
     }
 }
 /***********************************************************************************************************************/
+
+#endif

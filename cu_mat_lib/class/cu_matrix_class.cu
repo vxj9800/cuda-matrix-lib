@@ -1,3 +1,6 @@
+#ifndef _CU_MATRIX_CLASS_INCLUDED_
+#define _CU_MATRIX_CLASS_INCLUDED_
+
 class cu_mat
 {
     protected:
@@ -45,3 +48,5 @@ class cu_mat
 #include "operators.cu"
 #include "member_functions.cu"
 #include "friend_functions.cu"
+
+#endif

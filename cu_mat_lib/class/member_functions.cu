@@ -1,3 +1,6 @@
+#ifndef _CU_MATRIX_CLASS_MEMBER_FUNCTIONS_INCLUDED_
+#define _CU_MATRIX_CLASS_MEMBER_FUNCTIONS_INCLUDED_
+
 /************************************   Print matrix data   ***********************************************/
 void cu_mat::get()
 {
@@ -28,3 +31,5 @@ size_t cu_mat::rows(){return n_rows;}
 /***************************************   Get number of columns   *****************************************/
 size_t cu_mat::cols(){return n_cols;}
 /***********************************************************************************************************************/
+
+#endif

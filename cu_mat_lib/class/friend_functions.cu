@@ -1,3 +1,6 @@
+#ifndef _CU_MATRIX_CLASS_FRIEND_FUNCTIONS_INCLUDED_
+#define _CU_MATRIX_CLASS_FRIEND_FUNCTIONS_INCLUDED_
+
 /**************************************   Matrix with random numbers   ***********************************************/
 cu_mat randn(const size_t r = 1, const size_t c = 1)
 {
@@ -129,3 +132,5 @@ cu_mat trans(const cu_mat a)
     return tmp;
 }
 /***********************************************************************************************************************/
+
+#endif

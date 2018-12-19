@@ -1,3 +1,6 @@
+#ifndef _CU_MATRIX_LIB_INCLUDED_
+#define _CU_MATRIX_LIB_INCLUDED_
+
 // Include CUDA libraries
 #include <cuda_runtime.h>
 #include <curand.h>
@@ -22,3 +25,5 @@ if(!(cond))                                 \
 #include "cu_error_list.cu"
 #include "error_check.cu"
 #include "./class/cu_matrix_class.cu"
+
+#endif
