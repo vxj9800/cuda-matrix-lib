@@ -131,4 +131,15 @@ cu_mat cu_mat::operator^(const unsigned int n)
 }
 /***********************************************************************************************************************/
 
+
+/***************************************   Type conversion from cu_mat to double   **************************************/
+cu_mat::operator double()
+{
+    confirm((n_rows==1) && (n_cols==1), "Error: Type conversion is only possible in the case of 1x1 matrix.");
+    double val;
+    // Copy data from GPU to CPU.
+    HANDLE_ERROR( cudaMemcpy(&val,p,sizeof(double),cudaMemcpyDeviceToHost) );
+    return val;
+}
+
 #endif

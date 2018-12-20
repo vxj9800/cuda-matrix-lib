@@ -9,12 +9,15 @@ int main()
     // clock_t begin = clock();
 
     look_for_errors;
-    cu_mat a = ones(3,5);
-    cu_mat b = randn(10,1);
-    a.get(); b.get();
+    // cu_mat a = ones(3,5);
+    cu_mat a = 5;
+    cu_mat b = randn(4,1);
+    cout << double(a) << endl;
+    (cu_mat({{1,2,3,4}})*b).get();
+    // a.get(); b.get();
     // a = b^2;
-    trans(b).get();
-    // cu_mat a = {{1,2,3,4},{4,5,6}};
+    // trans(b).get();
+    // cu_mat a = {{1,2,3,4},{4,5,6,7}};
     // a.get();
     // cu_mat b = {{1,2},{4,5}};
     // cu_mat c = a*b;

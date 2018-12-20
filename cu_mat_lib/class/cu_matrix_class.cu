@@ -12,6 +12,7 @@ class cu_mat
     public:
         /***** Constructors *****/
         cu_mat(const initializer_list<initializer_list<double>> mat);                    // Single argument constructor
+        cu_mat(const double n);
         cu_mat(const cu_mat &to_b_copied);                                              // Copy constructor
 
         /***** Operators *****/
@@ -22,6 +23,7 @@ class cu_mat
         cu_mat operator+(const cu_mat b);                                             // Matrix addition operator
         cu_mat operator-(const cu_mat b);                                             // Matrix negattion operator
         cu_mat operator^(const unsigned int n);                                       // Matrix power operator
+        operator double();                                     // Type conversion from cu_mat to double
 
         /***** Member functions *****/
         void get();                                                                         // Print data

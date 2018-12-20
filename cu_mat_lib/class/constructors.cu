@@ -31,6 +31,15 @@ cu_mat::cu_mat(const initializer_list<initializer_list<double>> mat) : n_rows(ma
 /***********************************************************************************************************************/
 
 
+/************************************   Single double value constructor   ***********************************************/
+cu_mat::cu_mat(double n) : n_rows(1), n_cols(1)
+{
+    HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
+    HANDLE_ERROR( cudaMemcpy(p,&n,n_rows*n_cols*sizeof(double),cudaMemcpyHostToDevice) ); // Copy array from CPU to GPU
+}
+/***********************************************************************************************************************/
+
+
 /************************************   Copy constructor   ***********************************************/
 cu_mat::cu_mat(const cu_mat &to_b_copied) : n_rows(to_b_copied.n_rows), n_cols(to_b_copied.n_cols)
 {
