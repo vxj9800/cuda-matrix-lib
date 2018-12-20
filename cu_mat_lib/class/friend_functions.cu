@@ -133,4 +133,13 @@ cu_mat trans(const cu_mat a)
 }
 /***********************************************************************************************************************/
 
+
+/***************************************   Horizontal concatenation of two matrices   *****************************************/
+cu_mat horzcat(const cu_mat a, const cu_amt b)
+{
+    confirm(a.n_rows==b.n_rows,"Error: Dimensions of arrays being horizontally concatenated are not consistent.");
+    
+}
+/***************************************************************************************************************************/
+
 #endif
