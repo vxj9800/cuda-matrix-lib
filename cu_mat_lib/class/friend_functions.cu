@@ -135,10 +135,13 @@ cu_mat trans(const cu_mat a)
 
 
 /***************************************   Horizontal concatenation of two matrices   *****************************************/
-cu_mat horzcat(const cu_mat a, const cu_amt b)
+cu_mat horzcat(const cu_mat a, const cu_mat b)
 {
     confirm(a.n_rows==b.n_rows,"Error: Dimensions of arrays being horizontally concatenated are not consistent.");
-    
+    cu_mat tmp(a.n_rows,a.n_cols+b.n_cols);
+    HANDLE_ERROR( cudaMemcpy(tmp.p,a.p,a.n_rows*a.n_cols*sizeof(double),cudaMemcpyDeviceToDevice) );
+    HANDLE_ERROR( cudaMemcpy(tmp.p+(a.n_rows*a.n_cols),b.p,b.n_rows*b.n_cols*sizeof(double),cudaMemcpyDeviceToDevice) );
+    return tmp;
 }
 /***************************************************************************************************************************/
 

@@ -10,10 +10,9 @@ int main()
 
     look_for_errors;
     // cu_mat a = ones(3,5);
-    cu_mat a = 5;
+    cu_mat a = randn(4,3);
     cu_mat b = randn(4,1);
-    cout << double(a) << endl;
-    (cu_mat({{1,2,3,4}})*b).get();
+    cu_mat c = horzcat(a,b);
     // a.get(); b.get();
     // a = b^2;
     // trans(b).get();
@@ -25,7 +24,7 @@ int main()
 
     // cu_mat a = randn(4,4);
     // cu_mat b = randn(4,1);
-    //a.get(); b.get(); c.get();
+    a.get(); b.get(); c.get();
     report_errors;
 
     // clock_t end = clock();

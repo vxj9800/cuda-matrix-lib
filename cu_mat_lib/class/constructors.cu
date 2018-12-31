@@ -31,7 +31,7 @@ cu_mat::cu_mat(const initializer_list<initializer_list<double>> mat) : n_rows(ma
 /***********************************************************************************************************************/
 
 
-/************************************   Single double value constructor   ***********************************************/
+/************************************   Single value constructor   ***********************************************/
 cu_mat::cu_mat(double n) : n_rows(1), n_cols(1)
 {
     HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.

@@ -12,7 +12,7 @@ class cu_mat
     public:
         /***** Constructors *****/
         cu_mat(const initializer_list<initializer_list<double>> mat);                    // Single argument constructor
-        cu_mat(const double n);
+        cu_mat(const double n);                                                          // Single value constructor
         cu_mat(const cu_mat &to_b_copied);                                              // Copy constructor
 
         /***** Operators *****/
@@ -37,8 +37,8 @@ class cu_mat
         friend cu_mat ones(const size_t r, const size_t c);                                          // Matrix with all values 1
         friend cu_mat zeros(const size_t r, const size_t c);                                        // Matrix with all values 0
         friend cu_mat trans(const cu_mat a);                                                        // Transpose of the matrix
-        friend cu_mat horzcat(const cu_mat a, const cu_amt b);                                      // Horizontal concatenation of two matrices
-        friend cu_mat vertcat(const cu_mat a, const cu_amt b);                                      // Vertical concatenation of two matrices
+        friend cu_mat horzcat(const cu_mat a, const cu_mat b);                                      // Horizontal concatenation of two matrices
+        friend cu_mat vertcat(const cu_mat a, const cu_mat b);                                      // Vertical concatenation of two matrices
 
         /***** Destructor *****/
         ~cu_mat()                                                                        // Destructor to free the memory
