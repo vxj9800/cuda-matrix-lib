@@ -37,12 +37,12 @@ cu_mat cu_mat::operator()(const size_t r_begin, const size_t r_end, const size_t
 /***************************************   Assignment operator   **************************************/
 cu_mat& cu_mat::operator=(const cu_mat b)
 {
-    if ((n_rows!=b.n_rows) || (n_cols!=b.n_cols))
+    if ((n_rows*n_cols)!=(b.n_rows*b.n_cols))
     {
         HANDLE_ERROR( cudaFree(p) );
-        n_rows = b.n_rows; n_cols = b.n_cols;
-        HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
+        HANDLE_ERROR( cudaMalloc((void**)&p, b.n_rows*b.n_cols*sizeof(double)) ); // Allocate memory on GPU.
     }
+    n_rows = b.n_rows; n_cols = b.n_cols;
     HANDLE_ERROR( cudaMemcpy(p,b.p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy array from GPU to GPU
     return *this;
 }
