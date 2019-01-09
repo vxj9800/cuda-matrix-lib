@@ -135,12 +135,6 @@ cu_mat trans(const cu_mat a)
 
 
 /***************************************   Horizontal concatenation of two matrices   *****************************************/
-__global__ void copymat(double* dest, double* src, size_t bias, size_t dest_rows, size_t main_rows_bias, size_t n_ele)
-{
-    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx<n_ele)
-    dest[bias+idx+idx/dest_rows*main_rows_bias] = src[idx];
-}
 cu_mat horzcat(const cu_mat a, const cu_mat b)
 {
     confirm(a.n_rows==b.n_rows,"Error: Dimensions of arrays being horizontally concatenated are not consistent.");

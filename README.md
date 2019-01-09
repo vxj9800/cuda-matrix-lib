@@ -5,5 +5,8 @@
 `cu_matrix_functions.cu` contains supported extra functions (randn for now).  
 `error_check.cu` has supporting functions for error handelling.  
 
-`parent.cu` can be compiled with following command.  
+`parent.cu` can be compiled with following command for visual studio.  
 `nvcc parent.cu -lcublas -lcurand -lcusolver`
+
+`parent.cu` can be compiled with following command for g++.  
+`nvcc parent.cu -std=c++14 -lcublas -lcurand -lcusolver`

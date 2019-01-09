@@ -1,7 +1,7 @@
 #ifndef _CU_MATRIX_CLASS_CONSTRUCTORS_INCLUDED_
 #define _CU_MATRIX_CLASS_CONSTRUCTORS_INCLUDED_
 
-/**************************************   Single argument constructor   *******************************************/
+/**************************************   Single argument constructor with double values   *******************************************/
 cu_mat::cu_mat(const initializer_list<initializer_list<double>> mat) : n_rows(mat.size()), n_cols(mat.begin()->size())
 // ' -> ' Means:  pointer to an object -> member function. Essentially accessing a member function with the help of a pointer to that object.
 {
@@ -27,6 +27,20 @@ cu_mat::cu_mat(const initializer_list<initializer_list<double>> mat) : n_rows(ma
     HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
     HANDLE_ERROR( cudaMemcpy(p,m,n_rows*n_cols*sizeof(double),cudaMemcpyHostToDevice) ); // Copy array from CPU to GPU
     delete[] m;
+}
+/***********************************************************************************************************************/
+
+
+/**************************************   Single argument constructor with matrix values   *******************************************/
+__global__ void copymat(double* dest, double* src, size_t bias, size_t dest_rows, size_t main_rows_bias, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    dest[bias+idx+idx/dest_rows*main_rows_bias] = src[idx];
+}
+cu_mat::cu_mat(const initializer_list<initializer_list<cu_mat>> mat)
+{
+    
 }
 /***********************************************************************************************************************/
 

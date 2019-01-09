@@ -12,6 +12,7 @@ class cu_mat
     public:
         /***** Constructors *****/
         cu_mat(const initializer_list<initializer_list<double>> mat);                    // Single argument constructor with double values
+        cu_mat(const initializer_list<initializer_list<cu_mat>> mat);                    // Single argument constructor with matrix values
         cu_mat(const double n);                                                          // Single value constructor
         cu_mat(const cu_mat &to_b_copied);                                              // Copy constructor
 
