@@ -9,22 +9,10 @@ int main()
     // clock_t begin = clock();
 
     look_for_errors;
-    // cu_mat a = ones(3,5);
-    cu_mat a = randn(4,3);
-    cu_mat b = randn(4,1);
-    cu_mat c = horzcat(a,b);
-    // a.get(); b.get();
-    // a = b^2;
-    // trans(b).get();
-    // cu_mat a = {{1,2,3,4},{4,5,6,7}};
-    // a.get();
-    // cu_mat b = {{1,2},{4,5}};
-    // cu_mat c = a*b;
-    // a.get(); b.get(); c.get();
-
-    // cu_mat a = randn(4,4);
-    // cu_mat b = randn(4,1);
-    a.get(); b.get(); c.get();
+    cu_mat a = randn(5,10);
+    cu_mat b = randn(3,2);
+    cu_mat c = vertcat(a(2,2,6,8),b);
+    a.get(); a(2,3,6,7).get(); b.get(); c.get();
     report_errors;
 
     // clock_t end = clock();

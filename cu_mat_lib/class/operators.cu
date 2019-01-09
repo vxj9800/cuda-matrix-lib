@@ -13,11 +13,11 @@ cu_mat cu_mat::operator()(const size_t r, const size_t c)
 
 
 /**************************************   Access sub-matrix   *******************************************/
-__global__ void submat(double* current, double* tmp, size_t bias, size_t tmp_rows, size_t main_rows_bias, size_t n_ele)
+__global__ void submat(double* dest, double* src, size_t bias, size_t dest_rows, size_t main_rows_bias, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    tmp[idx] = current[bias+idx+idx/tmp_rows*main_rows_bias];
+    dest[idx] = src[bias+idx+idx/dest_rows*main_rows_bias];
 }
 cu_mat cu_mat::operator()(const size_t r_begin, const size_t r_end, const size_t c_begin, const size_t c_end)
 {
@@ -27,7 +27,7 @@ cu_mat cu_mat::operator()(const size_t r_begin, const size_t r_end, const size_t
     size_t main_rows_bias = n_rows-temp.n_rows;
     size_t n_ele = temp.n_rows*temp.n_cols;
     size_t n_threads = block_dim(n_ele);
-    submat<<<n_ele/n_threads,n_threads>>>(p,temp.p,bias,temp.n_rows,main_rows_bias,n_ele);
+    submat<<<n_ele/n_threads,n_threads>>>(temp.p,p,bias,temp.n_rows,main_rows_bias,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return temp;
 }

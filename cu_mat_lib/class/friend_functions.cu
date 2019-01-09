@@ -135,12 +135,42 @@ cu_mat trans(const cu_mat a)
 
 
 /***************************************   Horizontal concatenation of two matrices   *****************************************/
+__global__ void copymat(double* dest, double* src, size_t bias, size_t dest_rows, size_t main_rows_bias, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    dest[bias+idx+idx/dest_rows*main_rows_bias] = src[idx];
+}
 cu_mat horzcat(const cu_mat a, const cu_mat b)
 {
     confirm(a.n_rows==b.n_rows,"Error: Dimensions of arrays being horizontally concatenated are not consistent.");
     cu_mat tmp(a.n_rows,a.n_cols+b.n_cols);
     HANDLE_ERROR( cudaMemcpy(tmp.p,a.p,a.n_rows*a.n_cols*sizeof(double),cudaMemcpyDeviceToDevice) );
-    HANDLE_ERROR( cudaMemcpy(tmp.p+(a.n_rows*a.n_cols),b.p,b.n_rows*b.n_cols*sizeof(double),cudaMemcpyDeviceToDevice) );
+    size_t n_ele = b.n_rows*b.n_cols, n_threads = block_dim(n_ele);
+    copymat<<<n_ele/n_threads,n_threads>>>(tmp.p,b.p,a.n_cols*tmp.n_rows,tmp.n_rows,0,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
+    return tmp;
+}
+/***************************************************************************************************************************/
+
+
+/***************************************   Vertical concatenation of two matrices   *****************************************/
+    // cu_mat temp(r_end-r_begin+1,c_end-c_begin+1);
+    // size_t bias = (c_begin-1)*n_rows+r_begin-1;
+    // size_t main_rows_bias = n_rows-temp.n_rows;
+    // size_t n_ele = temp.n_rows*temp.n_cols;
+    // size_t n_threads = block_dim(n_ele);
+    // copymat<<<n_ele/n_threads,n_threads>>>(p,temp.p,bias,temp.n_rows,main_rows_bias,n_ele);
+    // HANDLE_ERROR( cudaPeekAtLastError() );
+cu_mat vertcat(const cu_mat a, const cu_mat b)
+{
+    confirm(a.n_cols==b.n_cols,"Error: Dimensions of arrays being vertically concatenated are not consistent.");
+    cu_mat tmp(a.n_rows+b.n_rows,a.n_cols);
+    size_t n_ele = a.n_rows*a.n_cols, n_threads = block_dim(n_ele);
+    copymat<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,0,a.n_rows,tmp.n_rows-a.n_rows,n_ele);
+    n_ele = b.n_rows*b.n_cols; n_threads = block_dim(n_ele);
+    copymat<<<n_ele/n_threads,n_threads>>>(tmp.p,b.p,a.n_rows,b.n_rows,tmp.n_rows-b.n_rows,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
     return tmp;
 }
 /***************************************************************************************************************************/
