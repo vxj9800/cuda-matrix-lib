@@ -40,7 +40,9 @@ __global__ void copymat(double* dest, double* src, size_t bias, size_t dest_rows
 }
 cu_mat::cu_mat(const initializer_list<initializer_list<cu_mat>> mat)
 {
-    
+    for(int i = 0; i<mat.size(); ++i)
+        for(int j = 0; j<(mat.begin()+i)->size()-1; ++j)
+            confirm(((mat.begin()+i)->begin()+j)->n_rows==((mat.begin()+i)->begin()+j+1)->n_rows,"Error: Dimensions of arrays being horizontally concatenated are not consistent.");
 }
 /***********************************************************************************************************************/
 

@@ -10,9 +10,8 @@ int main()
 
     look_for_errors;
     cu_mat a = randn(5,10);
-    cu_mat b = randn(3,2);
-    cu_mat c = vertcat(a(2,2,6,8),b);
-    a.get(); a(2,3,6,7).get(); b.get(); c.get();
+    cu_mat b = randn(6,2);
+    cu_mat c = {{a},{b}};
     report_errors;
 
     // clock_t end = clock();
