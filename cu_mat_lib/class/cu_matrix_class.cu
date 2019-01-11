@@ -4,15 +4,15 @@
 class cu_mat
 {
     protected:
-    size_t n_rows,n_cols;
+    size_t n_rows=0, n_cols=0;
     double *p=NULL;
     cu_mat(){}              // Inaccessible default constructor
     cu_mat(const size_t r, const size_t c, const double n);  // Two argument constructor with initialization
 
     public:
         /***** Constructors *****/
-        cu_mat(const initializer_list<initializer_list<double>> mat);                    // Single argument constructor with double values
-        cu_mat(const initializer_list<initializer_list<cu_mat>> mat);                    // Single argument constructor with matrix values
+        cu_mat(const initializer_list<initializer_list<double>> mat);                    // Single argument constructor with 'double' values
+        cu_mat(const initializer_list<initializer_list<cu_mat>> mat);                    // Single argument constructor with 'cu_mat' values
         cu_mat(const double n);                                                          // Single value constructor
         cu_mat(const cu_mat &to_b_copied);                                              // Copy constructor
 
@@ -27,6 +27,7 @@ class cu_mat
         operator double();                                     // Type conversion from cu_mat to double
 
         /***** Member functions *****/
+        cu_mat mult(cu_mat b);                                                              // Element wise multiplication
         void get();                                                                         // Print data
         size_t rows();                                                                      // Get number of rows
         size_t cols();                                                                      // Get number of columns

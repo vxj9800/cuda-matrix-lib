@@ -9,9 +9,12 @@ int main()
     // clock_t begin = clock();
 
     look_for_errors;
-    cu_mat a = randn(5,10);
-    cu_mat b = randn(6,2);
-    cu_mat c = {{a},{b}};
+    cu_mat a = randn(2,3);
+    cu_mat b = randn(2,5);
+    cu_mat c = randn(4,5);
+    cu_mat d = randn(4,3);
+    cu_mat e = {{a,b},{c,d}};
+    a.get(); b.get(); c.get(); d.get(); e.get();
     report_errors;
 
     // clock_t end = clock();

@@ -1,6 +1,26 @@
 #ifndef _CU_MATRIX_CLASS_MEMBER_FUNCTIONS_INCLUDED_
 #define _CU_MATRIX_CLASS_MEMBER_FUNCTIONS_INCLUDED_
 
+/************************************   Element wise multiplication   ***********************************************/
+__global__ void mat_multiplication(double* a, double* b, double* c, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    c[idx] = a[idx] * b[idx];
+}
+cu_mat cu_mat::mult(cu_mat b)
+{
+    confirm((n_rows == b.n_rows) && (n_cols == b.n_cols),"Error : Matrix multiplication is not possible. Matrices must have same dimensions.");
+    cu_mat c(n_rows,n_cols);
+    size_t n_ele = n_rows*n_cols;
+    size_t n_threads = block_dim(n_ele);
+    addition<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
+    return c;
+}
+/***********************************************************************************************************************/
+
+
 /************************************   Print matrix data   ***********************************************/
 void cu_mat::get()
 {
