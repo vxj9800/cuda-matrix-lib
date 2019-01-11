@@ -19,7 +19,10 @@ class cu_mat
         /***** Operators *****/
         cu_mat operator()(const size_t r, const size_t c);                                           // Matrix element access
         cu_mat operator()(const size_t r_begin, const size_t r_end, const size_t c_begin, const size_t c_end);   // Sub-matrix access
-        cu_mat& operator=(const cu_mat b);                                             // Assignment operator
+        cu_mat& operator=(const cu_mat b);                                            // Assignment operator to copy 'cu_mat'
+        cu_mat& operator=(const double b);                                            // Assignment operator to copy single 'double' value
+        cu_mat& operator=(const initializer_list<initializer_list<double>> b);        // Assignment operator to copy 'double' initializer list
+        cu_mat& operator=(const initializer_list<initializer_list<cu_mat>> b);        // Assignment operator to copy 'cu_mat' initializer list
         cu_mat operator*(const cu_mat b);                                             // Matrix multiplication operator
         cu_mat operator+(const cu_mat b);                                             // Matrix addition operator
         cu_mat operator-(const cu_mat b);                                             // Matrix negattion operator
@@ -28,6 +31,9 @@ class cu_mat
 
         /***** Member functions *****/
         cu_mat mult(cu_mat b);                                                              // Element wise multiplication
+        void replace(const size_t r, const size_t c, const double n);                       // Replace an element with a 'double' value
+        void replace(const size_t r, const size_t c, const cu_mat mat);                     // Replace an element with a 'cu_mat' value
+        void replace(const size_t r_begin, const size_t r_end, const size_t c_begin, const size_t c_end, const cu_mat mat);// Replace submatrix with a 'cu_mat' matrix
         void get();                                                                         // Print data
         size_t rows();                                                                      // Get number of rows
         size_t cols();                                                                      // Get number of columns

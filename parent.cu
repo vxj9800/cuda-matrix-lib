@@ -13,8 +13,10 @@ int main()
     cu_mat b = randn(2,5);
     cu_mat c = randn(4,5);
     cu_mat d = randn(4,3);
-    cu_mat e = {{a,b},{c,d}};
+    cu_mat e = 5;
     a.get(); b.get(); c.get(); d.get(); e.get();
+    e = {{a,b},{c,d}};
+    e.get();
     report_errors;
 
     // clock_t end = clock();

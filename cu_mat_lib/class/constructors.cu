@@ -62,7 +62,6 @@ cu_mat::cu_mat(const initializer_list<initializer_list<cu_mat>> mat)
     size_t bias, src_rows, src_cols;
     size_t main_rows_bias, n_ele, n_threads;
     size_t r_sum = 0, c_sum = 0;
-    // copymat<<<n_ele/n_threads,n_threads>>>(p,((mat.begin())->begin())->p,bias,src_rows,main_rows_bias,n_ele);
     for(int i = 0; i<mat.size(); ++i){
         for(int j = 0; j<(mat.begin()+i)->size(); ++j){
             bias = c_sum*n_rows+r_sum; src_rows = ((mat.begin()+i)->begin()+j)->n_rows; src_cols = ((mat.begin()+i)->begin()+j)->n_cols;
