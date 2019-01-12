@@ -21,6 +21,31 @@ cu_mat cu_mat::mult(cu_mat b)
 /***********************************************************************************************************************/
 
 
+/************************************   Replace an element with a 'cu_mat' value   ***********************************************/
+void cu_mat::replace(const size_t r, const size_t c, const cu_mat n)
+{
+    confirm((n.n_rows==1) && (n.n_cols==1),"Error: Value being replaced with has to be scalar.");
+    size_t bias = c*n_rows+r, src_rows = 1, src_cols = 1;
+    size_t main_rows_bias = n_rows-src_rows, n_ele = src_rows*src_cols, n_threads = block_dim(n_ele);
+    copymat<<<n_ele/n_threads,n_threads>>>(p,n.p,bias,src_rows,main_rows_bias,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
+}
+/***********************************************************************************************************************/
+
+
+/************************************   Replace submatrix with a 'cu_mat' matrix   ***********************************************/
+void cu_mat::replace(const size_t r_begin, const size_t r_end, const size_t c_begin, const size_t c_end, const cu_mat n)
+{
+    confirm((r_end<=n_rows) && (c_end<=n_cols),"Error: Index exceeds matrix bounds. The size of the matrix is " << n_rows << "x" << n_cols << ".");
+    confirm((n.n_rows==r_end-r_begin+1) && (n.n_cols==c_end-c_begin+1),"Error: Unable to replace the data due to size mismatch.");
+    size_t bias = (c_begin-1)*n_rows+r_begin-1, src_rows = n.n_rows, src_cols = n.n_cols;
+    size_t main_rows_bias = n_rows-src_rows, n_ele = src_rows*src_cols, n_threads = block_dim(n_ele);
+    copymat<<<n_ele/n_threads,n_threads>>>(p,n.p,bias,src_rows,main_rows_bias,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
+}
+/***********************************************************************************************************************/
+
+
 /************************************   Print matrix data   ***********************************************/
 void cu_mat::get()
 {

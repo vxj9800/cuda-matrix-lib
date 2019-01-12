@@ -2,7 +2,7 @@
 #define _CU_MATRIX_CLASS_FRIEND_FUNCTIONS_INCLUDED_
 
 /**************************************   Matrix with random numbers   ***********************************************/
-cu_mat randn(const size_t r = 1, const size_t c = 1)
+cu_mat randn(const size_t r, const size_t c)
 {
     size_t r_new = r, c_new = c;
     if ((r%2!=0)&&(c%2!=0))
@@ -17,7 +17,7 @@ cu_mat randn(const size_t r = 1, const size_t c = 1)
     HANDLE_ERROR( curandDestroyGenerator(prng) );
     return a(1,r,1,c);
 }
-cu_mat randn(const size_t n){return randn(n,n);}
+cu_mat randn(const size_t n=1){return randn(n,n);}
 /***************************************************************************************************************************/
 
 

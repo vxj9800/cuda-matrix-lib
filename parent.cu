@@ -9,14 +9,9 @@ int main()
     // clock_t begin = clock();
 
     look_for_errors;
-    cu_mat a = randn(2,3);
-    cu_mat b = randn(2,5);
-    cu_mat c = randn(4,5);
-    cu_mat d = randn(4,3);
-    cu_mat e = 5;
-    a.get(); b.get(); c.get(); d.get(); e.get();
-    e = {{a,b},{c,d}};
-    e.get();
+    // cu_mat a = randn(2,3);
+    cu_mat e = randn(5);
+    e.replace(2,4,3,4,{{10,11},{12,13},{14,15}}); e.get();
     report_errors;
 
     // clock_t end = clock();
