@@ -2,7 +2,7 @@
 #define _CU_MATRIX_CLASS_MEMBER_FUNCTIONS_INCLUDED_
 
 /************************************   Element wise multiplication   ***********************************************/
-__global__ void mat_multiplication(double* a, double* b, double* c, size_t n_ele)
+__global__ void elem_mult(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
@@ -14,7 +14,26 @@ cu_mat cu_mat::mult(cu_mat b)
     cu_mat c(n_rows,n_cols);
     size_t n_ele = n_rows*n_cols;
     size_t n_threads = block_dim(n_ele);
-    addition<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_mult<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
+    return c;
+}
+/***********************************************************************************************************************/
+
+
+/************************************   Element wise power   ***********************************************/
+__global__ void elem_power(double* dest, double* src, double n, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    dest[idx] = pow(src[idx],n);
+}
+cu_mat cu_mat::pow(double n)
+{
+    cu_mat c(n_rows,n_cols);
+    size_t n_ele = n_rows*n_cols;
+    size_t n_threads = block_dim(n_ele);
+    elem_power<<<n_ele/n_threads,n_threads>>>(c.p,p,n,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return c;
 }
@@ -64,6 +83,37 @@ void cu_mat::get()
     }
     cout<<endl;
     delete[] m;
+}
+/***********************************************************************************************************************/
+
+
+/************************************   Print matrix to a file   ***********************************************/
+void cu_mat::print(string myfile, bool del = 1)
+{
+    double *m = new double[n_rows*n_cols]();    // Allocate space on CPU memory.
+    confirm(m,"Error: Memory allocation failed in 'get()'.") // Check proper allocation.
+
+    // Copy data from GPU to CPU.
+    HANDLE_ERROR( cudaMemcpy(m,p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToHost) );
+
+    // Print the matrix
+    ofstream print;
+    if (del)
+        print.open(myfile,ios::out | ios::trunc);
+    else
+        print.open(myfile,ios::out | ios::app);
+    print << scientific << setprecision(8);
+    for(int i = 0; i<n_rows; ++i)
+    {
+        print << " ";
+        for(int j = 0; j<n_cols; ++j)
+        {
+            print << " " << m[j*n_rows+i] << " ";
+        }
+        print << endl;
+    }
+    delete[] m;
+    print.close();
 }
 /***********************************************************************************************************************/
 

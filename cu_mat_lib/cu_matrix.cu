@@ -7,6 +7,8 @@
 #include <curand_kernel.h>
 #include <cublas_v2.h>
 #include <cusolverDn.h>
+#include <fstream>
+#include <iomanip>
 
 // Macro definitions
 #define look_for_errors try{

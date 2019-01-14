@@ -28,9 +28,11 @@ class cu_mat
 
         /***** Member functions *****/ // Add an ultimate replace function
         cu_mat mult(cu_mat b);                                                              // Element wise multiplication
+        cu_mat pow(const double n);                                                         // Element wise power
         void replace(const size_t r, const size_t c, const cu_mat mat);                     // Replace an element with a 'cu_mat' value
         void replace(const size_t r_begin, const size_t r_end, const size_t c_begin, const size_t c_end, const cu_mat mat);// Replace submatrix with a 'cu_mat' matrix
-        void get();                                                                         // Print data
+        void get();                                                                         // Print matrix data
+        void print(string myfile, bool trunc);                                                        // Print matrix to a file
         size_t rows();                                                                      // Get number of rows
         size_t cols();                                                                      // Get number of columns
 
@@ -43,6 +45,7 @@ class cu_mat
         friend cu_mat trans(const cu_mat a);                                                        // Transpose of the matrix
         friend cu_mat horzcat(const cu_mat a, const cu_mat b);                                      // Horizontal concatenation of two matrices
         friend cu_mat vertcat(const cu_mat a, const cu_mat b);                                      // Vertical concatenation of two matrices
+        friend cu_mat stepspace(const double i, const double step, const double f);                 // MATLAB colon operator
 
         /***** Destructor *****/
         ~cu_mat()                                                                        // Destructor to free the memory

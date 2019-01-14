@@ -1,4 +1,4 @@
-size_t block_dim(int n_ele)
+size_t block_dim(size_t n_ele)
 {
 	size_t tc;
 	if (n_ele<=1024) return(n_ele);

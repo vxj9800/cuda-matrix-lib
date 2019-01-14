@@ -115,7 +115,7 @@ cu_mat zeros(const size_t n){return zeros(n,n);}
 
 
 /***************************************   Transpose current matrix   *****************************************/
-__global__ void mat_trans(double* a, double* b, size_t rows, size_t cols, double n_ele)
+__global__ void mat_trans(double* a, double* b, size_t rows, size_t cols, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     size_t r = idx%rows, c = idx/rows;
@@ -165,6 +165,30 @@ cu_mat vertcat(const cu_mat a, const cu_mat b)
     n_ele = b.n_rows*b.n_cols; n_threads = block_dim(n_ele);
     copymat<<<n_ele/n_threads,n_threads>>>(tmp.p,b.p,a.n_rows,b.n_rows,tmp.n_rows-b.n_rows,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
+    return tmp;
+}
+/***************************************************************************************************************************/
+
+
+/***************************************   MATLAB colon operator   *****************************************/
+__global__ void ss_mat_fill(double* dest, double i, double step, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if(idx<n_ele)
+    {
+        dest[idx] = i+step*idx;
+    }
+}
+cu_mat stepspace(const double i, const double f, const double step=1)
+{
+    size_t n;
+    if (((f-i)/step)>=0)
+    n = (f-i)/step+1;
+    else
+    n = 0;
+    cu_mat tmp(n,1);
+    size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
+    ss_mat_fill<<<n_ele/n_threads,n_threads>>>(tmp.p,i,step,n_ele);
     return tmp;
 }
 /***************************************************************************************************************************/

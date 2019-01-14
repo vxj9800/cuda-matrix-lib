@@ -10,8 +10,10 @@ int main()
 
     look_for_errors;
     // cu_mat a = randn(2,3);
-    cu_mat e = randn(5);
-    e.replace(2,4,3,4,{{10,11},{12,13},{14,15}}); e.get();
+    cu_mat e = stepspace(0,5,1);
+    //e.replace(2,4,3,4,{{10,11},{12,13},{14,15}});
+    e = e.pow(2);
+    e.get();
     report_errors;
 
     // clock_t end = clock();

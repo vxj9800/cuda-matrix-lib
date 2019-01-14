@@ -58,18 +58,21 @@ cu_mat::cu_mat(const initializer_list<initializer_list<cu_mat>> mat)
     }
 
     // Allocate memory and copy data
-    HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
-    size_t bias, src_rows, src_cols;
-    size_t main_rows_bias, n_ele, n_threads;
-    size_t r_sum = 0, c_sum = 0;
-    for(int i = 0; i<mat.size(); ++i){
-        for(int j = 0; j<(mat.begin()+i)->size(); ++j){
-            bias = c_sum*n_rows+r_sum; src_rows = ((mat.begin()+i)->begin()+j)->n_rows; src_cols = ((mat.begin()+i)->begin()+j)->n_cols;
-            main_rows_bias = n_rows-src_rows; n_ele = src_rows*src_cols; n_threads = block_dim(n_ele); c_sum += src_cols;
-            copymat<<<n_ele/n_threads,n_threads>>>(p,((mat.begin()+i)->begin()+j)->p,bias,src_rows,main_rows_bias,n_ele);
-            HANDLE_ERROR( cudaPeekAtLastError() );
+    if ((n_rows>0)&&(n_cols>0))
+    {
+        HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
+        size_t bias, src_rows, src_cols;
+        size_t main_rows_bias, n_ele, n_threads;
+        size_t r_sum = 0, c_sum = 0;
+        for(int i = 0; i<mat.size(); ++i){
+            for(int j = 0; j<(mat.begin()+i)->size(); ++j){
+                bias = c_sum*n_rows+r_sum; src_rows = ((mat.begin()+i)->begin()+j)->n_rows; src_cols = ((mat.begin()+i)->begin()+j)->n_cols;
+                main_rows_bias = n_rows-src_rows; n_ele = src_rows*src_cols; n_threads = block_dim(n_ele); c_sum += src_cols;
+                copymat<<<n_ele/n_threads,n_threads>>>(p,((mat.begin()+i)->begin()+j)->p,bias,src_rows,main_rows_bias,n_ele);
+                HANDLE_ERROR( cudaPeekAtLastError() );
+            }
+            r_sum += src_rows; c_sum = 0;
         }
-        r_sum += src_rows; c_sum = 0;
     }
 }
 /***********************************************************************************************************************/
@@ -87,8 +90,11 @@ cu_mat::cu_mat(double n) : n_rows(1), n_cols(1)
 /************************************   Copy constructor   ***********************************************/
 cu_mat::cu_mat(const cu_mat &to_b_copied) : n_rows(to_b_copied.n_rows), n_cols(to_b_copied.n_cols)
 {
-    HANDLE_ERROR( cudaMalloc((void**)&p,n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
-    HANDLE_ERROR( cudaMemcpy(p,to_b_copied.p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy array from CPU to GPU
+    if ((n_rows>0)&&(n_cols>0))
+    {
+        HANDLE_ERROR( cudaMalloc((void**)&p,n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
+        HANDLE_ERROR( cudaMemcpy(p,to_b_copied.p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy array from CPU to GPU
+    }
 }
 /***********************************************************************************************************************/
 
@@ -102,17 +108,20 @@ __global__ void set_data(double* p, const double n, const double n_ele)
 }
 cu_mat::cu_mat(const size_t r, const size_t c, const double n=0) : n_rows(r), n_cols(c)
 {
-    HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) );
-    if (n!=0)
+    if ((n_rows>0)&&(n_cols>0))
     {
-        size_t n_ele = n_rows*n_cols;
-        size_t n_threads = block_dim(n_ele);
-        set_data<<<n_ele/n_threads,n_threads>>>(p,n,n_ele);
-        HANDLE_ERROR( cudaPeekAtLastError() );
-    }
-    else
-    {
-        HANDLE_ERROR( cudaMemset(p,0,n_rows*n_cols*sizeof(double)) );
+        HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) );
+        if (n!=0)
+        {
+            size_t n_ele = n_rows*n_cols;
+            size_t n_threads = block_dim(n_ele);
+            set_data<<<n_ele/n_threads,n_threads>>>(p,n,n_ele);
+            HANDLE_ERROR( cudaPeekAtLastError() );
+        }
+        else
+        {
+            HANDLE_ERROR( cudaMemset(p,0,n_rows*n_cols*sizeof(double)) );
+        }
     }
 }
 /***********************************************************************************************************************/

@@ -50,16 +50,39 @@ cu_mat& cu_mat::operator=(const cu_mat b)
 
 
 /***************************************   Matrix multiplication   **************************************/
+__global__ void const_mat_mult(double *dest, double *src, double *n, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    dest[idx] = (*n)*src[idx];
+}
 cu_mat cu_mat::operator*(const cu_mat b)
 {
-    confirm(n_cols == b.n_rows,"Error : Matrix multiplication is not possible. Inner matrix dimensions must agree.");
-    cu_mat c(n_rows,b.n_cols);
-    double alf = 1.0, bet = 0;
-    cublasHandle_t handle;
-	HANDLE_ERROR( cublasCreate(&handle) );
-	HANDLE_ERROR( cublasDgemm(handle,CUBLAS_OP_N,CUBLAS_OP_N,n_rows,b.n_cols,n_cols,&alf,p,n_rows,b.p,n_cols,&bet,c.p,n_rows) );
-    HANDLE_ERROR( cublasDestroy(handle) );
-    return c;
+    if ((n_rows)*(n_cols)==1)
+    {
+        cu_mat c(b.n_rows,b.n_cols);
+        size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
+        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,b.p,p,n_ele);
+        return c;
+    }
+    else if ((b.n_rows)*(b.n_cols)==1)
+    {
+        cu_mat c(n_rows,n_cols);
+        size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
+        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,p,b.p,n_ele);
+        return c;
+    }
+    else
+    {
+        confirm(n_cols == b.n_rows,"Error : Matrix multiplication is not possible. Inner matrix dimensions must agree.");
+        cu_mat c(n_rows,b.n_cols);
+        double alf = 1.0, bet = 0;
+        cublasHandle_t handle;
+        HANDLE_ERROR( cublasCreate(&handle) );
+        HANDLE_ERROR( cublasDgemm(handle,CUBLAS_OP_N,CUBLAS_OP_N,n_rows,b.n_cols,n_cols,&alf,p,n_rows,b.p,n_cols,&bet,c.p,n_rows) );
+        HANDLE_ERROR( cublasDestroy(handle) );
+        return c;
+    }
 }
 /***********************************************************************************************************************/
 
