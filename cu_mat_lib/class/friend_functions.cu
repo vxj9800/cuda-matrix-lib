@@ -1,6 +1,8 @@
 #ifndef _CU_MATRIX_CLASS_FRIEND_FUNCTIONS_INCLUDED_
 #define _CU_MATRIX_CLASS_FRIEND_FUNCTIONS_INCLUDED_
 
+#include <cmath>
+
 /**************************************   Matrix with random numbers   ***********************************************/
 cu_mat randn(const size_t r, const size_t c)
 {
@@ -36,6 +38,7 @@ cu_mat eye(const size_t r, const size_t c)
     size_t n_ele = min(r,c);
     size_t n_threads = block_dim(n_ele);
     eye_mat<<<n_ele/n_threads,n_threads>>>(temp.p,r,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
     return temp;
 }
 cu_mat eye(const size_t n){return eye(n,n);}
@@ -189,7 +192,37 @@ cu_mat stepspace(const double i, const double f, const double step=1)
     cu_mat tmp(n,1);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
     ss_mat_fill<<<n_ele/n_threads,n_threads>>>(tmp.p,i,step,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
     return tmp;
+}
+/***************************************************************************************************************************/
+
+
+/***************************************   Norm of the matrix   *****************************************/
+cu_mat norm(cu_mat a, double p = 2)
+{
+    confirm((p==1) || (p==2) || isinf(p),"Error: 'norm' is available only for 1, 2 and inf types.");
+    cu_mat c=0;
+    cublasHandle_t handle;
+    HANDLE_ERROR( cublasCreate(&handle) );
+    if(p==1)
+    {
+        HANDLE_ERROR( cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE) );
+        HANDLE_ERROR( cublasDasum(handle,static_cast<int>(a.n_rows*a.n_cols),a.p,1,c.p) );
+    }
+    else if(p==2)
+    {
+        HANDLE_ERROR( cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE) );
+        HANDLE_ERROR( cublasDnrm2(handle,static_cast<int>(a.n_rows*a.n_cols),a.p,1,c.p) );
+    }
+    else
+    {
+        int idx;
+        HANDLE_ERROR( cublasIdamax(handle,a.n_rows*a.n_cols,a.p,1,&idx) );
+        c = abs(a(static_cast<size_t>(idx)));
+    }
+    HANDLE_ERROR( cublasDestroy(handle) );
+    return c;
 }
 /***************************************************************************************************************************/
 

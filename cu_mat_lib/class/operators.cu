@@ -1,9 +1,37 @@
 #ifndef _CU_MATRIX_CLASS_OPERATORS_INCLUDED_
 #define _CU_MATRIX_CLASS_OPERATORS_INCLUDED_
 
+/**************************************   Sub-matrix access with 'cu_mat'   *******************************************/
+// __global__ void check_integer()
+// cu_mat cu_mat::operator()(const cu_mat rows, const cu_mat cols)
+// {
+//     confirm((rows.n_rows==1) || (rows.n_cols==1), "Error: 'rows' has to be a vector.");
+//     confirm((cols.n_rows==1) || (cols.n_cols==1), "Error: 'rows' has to be a vector.");
+//     confirm(idx > 0, "Indexing starts from 1 for this library.")
+//     confirm(idx <= n_rows*n_cols,"Error: Index exceeds matrix bounds. Matrix has " << n_rows*n_cols << "elements in it.");
+//     cu_mat temp(1,1);
+//     HANDLE_ERROR( cudaMemcpy(temp.p,p+(idx-1),sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy value from GPU to GPU
+//     return temp;
+// }
+/***********************************************************************************************************************/
+
+
+/**************************************   Matrix element access based on index   *******************************************/
+cu_mat cu_mat::operator()(const size_t idx)
+{
+    confirm(idx > 0, "Indexing starts from 1 for this library.")
+    confirm(idx <= n_rows*n_cols,"Error: Index exceeds matrix bounds. Matrix has " << n_rows*n_cols << "elements in it.");
+    cu_mat temp(1,1);
+    HANDLE_ERROR( cudaMemcpy(temp.p,p+(idx-1),sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy value from GPU to GPU
+    return temp;
+}
+/***********************************************************************************************************************/
+
+
 /**************************************   Access single element of the matrix   *******************************************/
 cu_mat cu_mat::operator()(const size_t r, const size_t c)
 {
+    confirm((r>0)&&(c>0), "Indexing starts from 1 for this library.")
     confirm((r<=n_rows)&&(c<=n_cols),"Error: Index exceeds matrix bounds. The size of the matrix is " << n_rows << "x" << n_cols << ".");
     cu_mat temp(1,1);
     HANDLE_ERROR( cudaMemcpy(temp.p,p+(c-1)*n_rows+r-1,sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy value from GPU to GPU
@@ -21,6 +49,7 @@ __global__ void submat(double* dest, double* src, size_t bias, size_t dest_rows,
 }
 cu_mat cu_mat::operator()(const size_t r_begin, const size_t r_end, const size_t c_begin, const size_t c_end)
 {
+    confirm((r_begin>0)&&(c_begin>0), "Indexing starts from 1 for this library.")
     confirm((r_end<=n_rows)&&(c_end<=n_cols),"Error: Index exceeds matrix bounds. The size of the matrix is " << n_rows << "x" << n_cols << ".")
     cu_mat temp(r_end-r_begin+1,c_end-c_begin+1);
     size_t bias = (c_begin-1)*n_rows+r_begin-1;
@@ -155,6 +184,46 @@ cu_mat cu_mat::operator^(const unsigned int n)
 /***********************************************************************************************************************/
 
 
+/************************************   Greather than operator   ***********************************************/
+__global__ void elem_greater(double* a, double* b, double* c, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    c[idx] = (a[idx] > b[idx]);
+}
+cu_mat cu_mat::operator>(cu_mat b)
+{
+    confirm((n_rows == b.n_rows) && (n_cols == b.n_cols),"Error : Boolean check is not possible. Matrices must have same dimensions.");
+    cu_mat c(n_rows,n_cols);
+    size_t n_ele = n_rows*n_cols;
+    size_t n_threads = block_dim(n_ele);
+    elem_greater<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
+    return c;
+}
+/***********************************************************************************************************************/
+
+
+/************************************   Smaller than operator   ***********************************************/
+__global__ void elem_smaller(double* a, double* b, double* c, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    c[idx] = (a[idx] < b[idx]);
+}
+cu_mat cu_mat::operator<(cu_mat b)
+{
+    confirm((n_rows == b.n_rows) && (n_cols == b.n_cols),"Error : Boolean check is not possible. Matrices must have same dimensions.");
+    cu_mat c(n_rows,n_cols);
+    size_t n_ele = n_rows*n_cols;
+    size_t n_threads = block_dim(n_ele);
+    elem_smaller<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
+    return c;
+}
+/***********************************************************************************************************************/
+
+
 /***************************************   Type conversion from cu_mat to double   **************************************/
 cu_mat::operator double()
 {
@@ -164,5 +233,6 @@ cu_mat::operator double()
     HANDLE_ERROR( cudaMemcpy(&val,p,sizeof(double),cudaMemcpyDeviceToHost) );
     return val;
 }
+/***********************************************************************************************************************/
 
 #endif

@@ -1,6 +1,26 @@
 #ifndef _CU_MATRIX_CLASS_MEMBER_FUNCTIONS_INCLUDED_
 #define _CU_MATRIX_CLASS_MEMBER_FUNCTIONS_INCLUDED_
 
+/************************************   Element wise division   ***********************************************/
+__global__ void elem_div(double* a, double* b, double* c, size_t n_ele)
+{
+    unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx<n_ele)
+    c[idx] = a[idx] / b[idx];
+}
+cu_mat cu_mat::div(cu_mat b)
+{
+    confirm((n_rows == b.n_rows) && (n_cols == b.n_cols),"Error : Matrix multiplication is not possible. Matrices must have same dimensions.");
+    cu_mat c(n_rows,n_cols);
+    size_t n_ele = n_rows*n_cols;
+    size_t n_threads = block_dim(n_ele);
+    elem_div<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
+    return c;
+}
+/***********************************************************************************************************************/
+
+
 /************************************   Element wise multiplication   ***********************************************/
 __global__ void elem_mult(double* a, double* b, double* c, size_t n_ele)
 {
@@ -88,7 +108,7 @@ void cu_mat::get()
 
 
 /************************************   Print matrix to a file   ***********************************************/
-void cu_mat::print(string myfile, bool del = 1)
+void cu_mat::print(ofstream &print)
 {
     double *m = new double[n_rows*n_cols]();    // Allocate space on CPU memory.
     confirm(m,"Error: Memory allocation failed in 'get()'.") // Check proper allocation.
@@ -97,11 +117,6 @@ void cu_mat::print(string myfile, bool del = 1)
     HANDLE_ERROR( cudaMemcpy(m,p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToHost) );
 
     // Print the matrix
-    ofstream print;
-    if (del)
-        print.open(myfile,ios::out | ios::trunc);
-    else
-        print.open(myfile,ios::out | ios::app);
     print << scientific << setprecision(8);
     for(int i = 0; i<n_rows; ++i)
     {
@@ -113,7 +128,6 @@ void cu_mat::print(string myfile, bool del = 1)
         print << endl;
     }
     delete[] m;
-    print.close();
 }
 /***********************************************************************************************************************/
 
