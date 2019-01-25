@@ -12,11 +12,13 @@ int main()
     clock_t begin = clock();
     cudaDeviceReset();
     look_for_errors;
-    cu_mat a = randn(2,3);
-    cu_mat e = a;
-    e = a*cu_mat(10);
-    // cu_mat x0 = 0, params = 0;
-    // ode45(der,0,0.001,5,x0,params);
+    // cu_mat a = randn(2,3);
+    // cu_mat e = sin(a);
+    // e = a;
+    // e.get();
+    //e = a*cu_mat(10);
+    cu_mat x0 = 0, params = 0;
+    ode45(der,0,0.001,5,x0,params);
     // cu_mat x0 = {{2},{0}}, params = 1000;
     // ode45(der,0,50,3000,x0,params);
     report_errors;

@@ -66,14 +66,22 @@ cu_mat cu_mat::operator()(const size_t &r_begin, const size_t &r_end, const size
 /***************************************   Assignment operator to copy 'cu_mat'   **************************************/
 cu_mat& cu_mat::operator=(const cu_mat &b)
 {
-    cout << "Assignment operator called." << endl;
-    if ((n_rows*n_cols)!=(b.n_rows*b.n_cols))
+    //cout << "Assignment operator called." << endl;
+    if (b.del==0)
     {
-        HANDLE_ERROR( cudaFree(p) );
-        HANDLE_ERROR( cudaMalloc((void**)&p, b.n_rows*b.n_cols*sizeof(double)) ); // Allocate memory on GPU.
+        cout << "it worked." << endl;
+        n_rows = b.n_rows; n_cols = b.n_cols; p = b.p;
     }
-    n_rows = b.n_rows; n_cols = b.n_cols;
-    HANDLE_ERROR( cudaMemcpy(p,b.p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy array from GPU to GPU
+    else
+    {
+        if ((n_rows*n_cols)!=(b.n_rows*b.n_cols))
+        {
+            HANDLE_ERROR( cudaFree(p) );
+            HANDLE_ERROR( cudaMalloc((void**)&p, b.n_rows*b.n_cols*sizeof(double)) ); // Allocate memory on GPU.
+        }
+        n_rows = b.n_rows; n_cols = b.n_cols;
+        HANDLE_ERROR( cudaMemcpy(p,b.p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy array from GPU to GPU
+    }
     return *this;
 }
 /***********************************************************************************************************************/

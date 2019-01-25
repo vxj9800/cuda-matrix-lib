@@ -5,7 +5,7 @@ class cu_mat
 {
     protected:
     size_t n_rows=0, n_cols=0;
-    bool del = 0;
+    bool del = 1;
     double *p=NULL;
     cu_mat(){}              // Inaccessible default constructor
     cu_mat(const size_t &r, const size_t &c, const double &n);  // Two argument constructor with initialization
@@ -104,7 +104,7 @@ class cu_mat
         ~cu_mat()                                                                                   // Destructor to free the memory
         {
             // cout << "Destructor called." << endl;
-            if (del==0)
+            if (del==1)
             HANDLE_ERROR( cudaFree(p) );
         }
 };

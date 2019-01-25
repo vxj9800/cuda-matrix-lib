@@ -550,7 +550,7 @@ __global__ void mat_sine(double* dest, double* src, const int n_ele)
 }
 cu_mat sin(const cu_mat &a)
 {
-    cu_mat tmp(a.n_rows,a.n_cols);
+    cu_mat tmp(a.n_rows,a.n_cols); tmp.del = 0;
     size_t n_ele = a.n_rows*a.n_cols, n_threads = block_dim(n_ele);
     mat_sine<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
