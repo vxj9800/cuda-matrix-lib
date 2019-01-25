@@ -1,4 +1,4 @@
-cu_mat der(cu_mat t, cu_mat x, cu_mat params)
+cu_mat der(const cu_mat &t, const cu_mat &x, const cu_mat &params)
 {
 	return (cos(t));
 }

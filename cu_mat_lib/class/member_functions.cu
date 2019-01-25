@@ -8,7 +8,7 @@ __global__ void elem_div(double* a, double* b, double* c, size_t n_ele)
     if (idx<n_ele)
     c[idx] = a[idx] / b[idx];
 }
-cu_mat cu_mat::div(cu_mat b)
+cu_mat cu_mat::div(const cu_mat &b)
 {
     confirm((n_rows == b.n_rows) && (n_cols == b.n_cols),"Error : Matrix multiplication is not possible. Matrices must have same dimensions.");
     cu_mat c(n_rows,n_cols);
@@ -28,7 +28,7 @@ __global__ void elem_mult(double* a, double* b, double* c, size_t n_ele)
     if (idx<n_ele)
     c[idx] = a[idx] * b[idx];
 }
-cu_mat cu_mat::mult(cu_mat b)
+cu_mat cu_mat::mult(const cu_mat &b)
 {
     confirm((n_rows == b.n_rows) && (n_cols == b.n_cols),"Error : Matrix multiplication is not possible. Matrices must have same dimensions.");
     cu_mat c(n_rows,n_cols);
@@ -48,7 +48,7 @@ __global__ void elem_power(double* dest, double* src, double n, size_t n_ele)
     if (idx<n_ele)
     dest[idx] = pow(src[idx],n);
 }
-cu_mat cu_mat::pow(double n)
+cu_mat cu_mat::pow(const double &n)
 {
     cu_mat c(n_rows,n_cols);
     size_t n_ele = n_rows*n_cols;
@@ -61,7 +61,7 @@ cu_mat cu_mat::pow(double n)
 
 
 /************************************   Replace an element with a 'cu_mat' value   ***********************************************/
-void cu_mat::replace(const size_t r, const size_t c, const cu_mat n)
+void cu_mat::replace(const size_t &r, const size_t &c, const cu_mat &n)
 {
     confirm((n.n_rows==1) && (n.n_cols==1),"Error: Value being replaced with has to be scalar.");
     size_t bias = c*n_rows+r, src_rows = 1, src_cols = 1;
@@ -73,7 +73,7 @@ void cu_mat::replace(const size_t r, const size_t c, const cu_mat n)
 
 
 /************************************   Replace submatrix with a 'cu_mat' matrix   ***********************************************/
-void cu_mat::replace(const size_t r_begin, const size_t r_end, const size_t c_begin, const size_t c_end, const cu_mat n)
+void cu_mat::replace(const size_t &r_begin, const size_t &r_end, const size_t &c_begin, const size_t &c_end, const cu_mat &n)
 {
     confirm((r_end<=n_rows) && (c_end<=n_cols),"Error: Index exceeds matrix bounds. The size of the matrix is " << n_rows << "x" << n_cols << ".");
     confirm((n.n_rows==r_end-r_begin+1) && (n.n_cols==c_end-c_begin+1),"Error: Unable to replace the data due to size mismatch.");
@@ -93,15 +93,16 @@ void cu_mat::get()
 
     // Copy data from GPU to CPU.
     HANDLE_ERROR( cudaMemcpy(m,p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToHost) );
+
+    cout << scientific << setprecision(4);
     for(int i = 0; i<n_rows; ++i)
     {
         for(int j = 0; j<n_cols; ++j)
         {
-            cout<<" "<<m[j*n_rows+i];
+            cout<<m[j*n_rows+i]<<" ";
         }
         cout<<endl;
     }
-    cout<<endl;
     delete[] m;
 }
 /***********************************************************************************************************************/

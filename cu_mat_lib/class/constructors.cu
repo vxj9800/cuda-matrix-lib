@@ -2,7 +2,7 @@
 #define _CU_MATRIX_CLASS_CONSTRUCTORS_INCLUDED_
 
 /**************************************   Single argument constructor with 'double' values   *******************************************/
-cu_mat::cu_mat(const initializer_list<initializer_list<double>> mat) : n_rows(mat.size()), n_cols(mat.begin()->size())
+cu_mat::cu_mat(const initializer_list<initializer_list<double>> &mat) : n_rows(mat.size()), n_cols(mat.begin()->size())
 // ' -> ' Means:  pointer to an object -> member function. Essentially accessing a member function with the help of a pointer to that object.
 {
     // Define number of rows from the array input. Define number of columns from first row of array input
@@ -38,7 +38,7 @@ __global__ void copymat(double* dest, double* src, size_t bias, size_t src_rows,
     if (idx<n_ele)
     dest[bias+idx+idx/src_rows*main_rows_bias] = src[idx];
 }
-cu_mat::cu_mat(const initializer_list<initializer_list<cu_mat>> mat)
+cu_mat::cu_mat(const initializer_list<initializer_list<cu_mat>> &mat)
 {
     // Calculate total number of columns
     for(int i = 0; i<mat.begin()->size(); ++i)
@@ -79,7 +79,7 @@ cu_mat::cu_mat(const initializer_list<initializer_list<cu_mat>> mat)
 
 
 /************************************   Single value constructor   ***********************************************/
-cu_mat::cu_mat(double n) : n_rows(1), n_cols(1)
+cu_mat::cu_mat(const double &n) : n_rows(1), n_cols(1)
 {
     HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
     HANDLE_ERROR( cudaMemcpy(p,&n,n_rows*n_cols*sizeof(double),cudaMemcpyHostToDevice) ); // Copy array from CPU to GPU
@@ -90,6 +90,7 @@ cu_mat::cu_mat(double n) : n_rows(1), n_cols(1)
 /************************************   Copy constructor   ***********************************************/
 cu_mat::cu_mat(const cu_mat &to_b_copied) : n_rows(to_b_copied.n_rows), n_cols(to_b_copied.n_cols)
 {
+    cout << "Copy constructor called." << endl;
     if ((n_rows>0)&&(n_cols>0))
     {
         HANDLE_ERROR( cudaMalloc((void**)&p,n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
@@ -106,7 +107,7 @@ __global__ void set_data(double* p, const double n, const double n_ele)
     if (idx<n_ele)
     p[idx] = n;
 }
-cu_mat::cu_mat(const size_t r, const size_t c, const double n=0) : n_rows(r), n_cols(c)
+cu_mat::cu_mat(const size_t &r, const size_t &c, const double &n=0) : n_rows(r), n_cols(c)
 {
     if ((n_rows>0)&&(n_cols>0))
     {

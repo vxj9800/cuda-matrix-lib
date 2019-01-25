@@ -4,7 +4,7 @@
 #include <cmath>
 
 /**************************************   Matrix with random numbers   ***********************************************/
-cu_mat randn(const size_t r, const size_t c)
+cu_mat randn(const size_t &r, const size_t &c)
 {
     size_t r_new = r, c_new = c;
     if ((r%2!=0)&&(c%2!=0))
@@ -19,7 +19,7 @@ cu_mat randn(const size_t r, const size_t c)
     HANDLE_ERROR( curandDestroyGenerator(prng) );
     return a(1,r,1,c);
 }
-cu_mat randn(const size_t n=1){return randn(n,n);}
+cu_mat randn(const size_t &n=1){return randn(n,n);}
 /***************************************************************************************************************************/
 
 
@@ -32,7 +32,7 @@ __global__ void eye_mat(double* p, const int r, const int n_ele)
         p[idx*r+idx] = 1.0;
     }
 }
-cu_mat eye(const size_t r, const size_t c)
+cu_mat eye(const size_t &r, const size_t &c)
 {
     cu_mat temp(r,c);
     size_t n_ele = min(r,c);
@@ -41,12 +41,12 @@ cu_mat eye(const size_t r, const size_t c)
     HANDLE_ERROR( cudaPeekAtLastError() );
     return temp;
 }
-cu_mat eye(const size_t n){return eye(n,n);}
+cu_mat eye(const size_t &n){return eye(n,n);}
 /***************************************************************************************************************************/
 
 
 /*****************************************   Matrix left divide   *****************************************/
-cu_mat mld(const cu_mat a, const cu_mat b) // Adapted from CUSOLVER_Library.pdf QR examples
+cu_mat mld(const cu_mat &a, const cu_mat &b) // Adapted from CUSOLVER_Library.pdf QR examples
 {
     confirm(a.n_rows == b.n_rows,"Error: 'mld()' operation cannot be performed. Matrix dimensions must agree.")
 
@@ -101,19 +101,19 @@ cu_mat mld(const cu_mat a, const cu_mat b) // Adapted from CUSOLVER_Library.pdf 
 
 
 /*****************************************   Matrix with all values 1   *****************************************/
-cu_mat ones(const size_t r, const size_t c)
+cu_mat ones(const size_t &r, const size_t &c)
 {
     return cu_mat(r,c,1);
 }
-cu_mat ones(const size_t n){return ones(n,n);}
+cu_mat ones(const size_t &n){return ones(n,n);}
 /***************************************************************************************************************************/
 
 /*****************************************   Matrix with all values 0   *****************************************/
-cu_mat zeros(const size_t r, const size_t c)
+cu_mat zeros(const size_t &r, const size_t &c)
 {
     return cu_mat(r,c);
 }
-cu_mat zeros(const size_t n){return zeros(n,n);}
+cu_mat zeros(const size_t &n){return zeros(n,n);}
 /***************************************************************************************************************************/
 
 
@@ -125,7 +125,7 @@ __global__ void mat_trans(double* a, double* b, size_t rows, size_t cols, size_t
     if (idx<n_ele)
     a[c+r*cols] = b[idx];
 }
-cu_mat trans(const cu_mat a)
+cu_mat trans(const cu_mat &a)
 {
     cu_mat tmp(a.n_cols,a.n_rows);
     size_t n_ele = a.n_rows*a.n_cols;
@@ -138,7 +138,7 @@ cu_mat trans(const cu_mat a)
 
 
 /***************************************   Horizontal concatenation of two matrices   *****************************************/
-cu_mat horzcat(const cu_mat a, const cu_mat b)
+cu_mat horzcat(const cu_mat &a, const cu_mat &b)
 {
     confirm(a.n_rows==b.n_rows,"Error: Dimensions of arrays being horizontally concatenated are not consistent.");
     cu_mat tmp(a.n_rows,a.n_cols+b.n_cols);
@@ -159,7 +159,7 @@ cu_mat horzcat(const cu_mat a, const cu_mat b)
     // size_t n_threads = block_dim(n_ele);
     // copymat<<<n_ele/n_threads,n_threads>>>(p,temp.p,bias,temp.n_rows,main_rows_bias,n_ele);
     // HANDLE_ERROR( cudaPeekAtLastError() );
-cu_mat vertcat(const cu_mat a, const cu_mat b)
+cu_mat vertcat(const cu_mat &a, const cu_mat &b)
 {
     confirm(a.n_cols==b.n_cols,"Error: Dimensions of arrays being vertically concatenated are not consistent.");
     cu_mat tmp(a.n_rows+b.n_rows,a.n_cols);
@@ -182,7 +182,7 @@ __global__ void ss_mat_fill(double* dest, double i, double step, size_t n_ele)
         dest[idx] = i+step*idx;
     }
 }
-cu_mat stepspace(const double i, const double f, const double step=1)
+cu_mat stepspace(const double &i, const double &f, const double &step=1)
 {
     size_t n;
     if (((f-i)/step)>=0)
@@ -199,7 +199,7 @@ cu_mat stepspace(const double i, const double f, const double step=1)
 
 
 /***************************************   Norm of the matrix   *****************************************/
-cu_mat norm(cu_mat a, double p = 2)
+cu_mat norm(cu_mat &a, const double &p = 2)
 {
     confirm((p==1) || (p==2) || isinf(p),"Error: 'norm' is available only for 1, 2 and inf types.");
     cu_mat c=0;
@@ -219,7 +219,7 @@ cu_mat norm(cu_mat a, double p = 2)
     {
         int idx;
         HANDLE_ERROR( cublasIdamax(handle,a.n_rows*a.n_cols,a.p,1,&idx) );
-        c = abs(a(static_cast<size_t>(idx)));
+        c = abs(a(static_cast<const size_t>(idx)));
     }
     HANDLE_ERROR( cublasDestroy(handle) );
     return c;

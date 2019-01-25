@@ -42,8 +42,8 @@ void ode45(std::function<cu_mat (cu_mat,cu_mat,cu_mat)> der, double t0, double t
 	for(int loop = 1; loop < t.rows(); ++loop)
 	{
 		t_start = t(loop,1); t_end = t(loop+1,1); h = tstep/1000.0;
-		hmax = (t_end-t_start)/10.0; hmin = 16.0*eps(t_start); n_fail = 0;
-		while((t_start+h)<=t_end)
+		hmax = double(t_end-t_start)/10.0; hmin = 16.0*eps(double(t_start)); n_fail = 0;
+		while(double((t_start+h)<=t_end))
 		{
 			k1 = h*der(t_start,y0,der_params);
 			k2 = h*der(t_start+c2*h,y0+a21*k1,der_params);
@@ -58,30 +58,30 @@ void ode45(std::function<cu_mat (cu_mat,cu_mat,cu_mat)> der, double t0, double t
 
 			err = norm(z1-y1,INFINITY);
 			// err.print("ode_err.txt",0); s.print("ode_s.txt",0); h.print("ode_h.txt",0);
-			if (err==0)
+			if (double(err==0))
 			{
 				s = 2;
 			}
 			else
 			{
-				s = pow(rtol*h/2.0/err,1/5.0);
+				s = pow(double(rtol*h/2.0/err),1/5.0);
 			}
 			// s.get();
-			if (err<atol)
+			if (double(err<atol))
 			{
 				t_start = t_start+h; y0 = y1;
 				// (h*s).get(); ((h*s)<hmin).get(); ((h*s)>hmax).get();
-				if ((h*s)<hmin){h = hmin; (h*s).get();}
-				else if ((h*s)>hmax){h = hmax;}
+				if (double((h*s)<hmin)){h = hmin; (h*s).get();}
+				else if (double((h*s)>hmax)){h = hmax;}
 				else {h = h*s;}
 				n_fail = 0;
-				if (((h+t_start)>t_end) && (t_start != t_end)) {h = t_end-t_start;}
+				if (double(((h+t_start)>t_end) && (t_start != t_end))) {h = t_end-t_start;}
 			}
 			else
 			{
 				//cout << "why it came here?" << endl;
-				if ((h*s*sf)<hmin) h = hmin;
-				else if ((h*s*sf)>hmax) h = hmax;
+				if (double((h*s*sf)<hmin)) h = hmin;
+				else if (double((h*s*sf)>hmax)) h = hmax;
 				else h = h*s*sf;
 				++n_fail;
 			}
