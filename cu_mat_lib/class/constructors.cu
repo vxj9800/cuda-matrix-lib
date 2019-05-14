@@ -90,16 +90,19 @@ cu_mat::cu_mat(const double &n) : n_rows(1), n_cols(1)
 /************************************   Copy constructor   ***********************************************/
 cu_mat::cu_mat(const cu_mat &to_b_copied) : n_rows(to_b_copied.n_rows), n_cols(to_b_copied.n_cols)
 {
-    //cout << "Copy constructor called." << endl;
+    // cout << "Copy constructor called." << endl;
     if ((n_rows>0)&&(n_cols>0))
     {
         if (to_b_copied.del==0)
         {
-            //cout << "it worked." << endl;
+            // cout << "Copy was not made." << endl;
+            HANDLE_ERROR( cudaFree(p) );
             p = to_b_copied.p;
+            del = 0; // May cause memory leaks. Be f***ing careful.
         }
         else
         {
+            // cout << "Copy made." << endl;
             HANDLE_ERROR( cudaMalloc((void**)&p,n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
             HANDLE_ERROR( cudaMemcpy(p,to_b_copied.p,n_rows*n_cols*sizeof(double),cudaMemcpyDeviceToDevice) ); // Copy array from CPU to GPU
         }

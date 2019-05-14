@@ -34,7 +34,7 @@ __global__ void eye_mat(double* p, const int r, const int n_ele)
 }
 cu_mat eye(const size_t &r, const size_t &c)
 {
-    cu_mat temp(r,c);
+    cu_mat temp(r,c); temp.del = 0;
     size_t n_ele = min(r,c);
     size_t n_threads = block_dim(n_ele);
     eye_mat<<<n_ele/n_threads,n_threads>>>(temp.p,r,n_ele);

@@ -1,6 +1,19 @@
 #ifndef _CU_MATRIX_CLASS_MEMBER_FUNCTIONS_INCLUDED_
 #define _CU_MATRIX_CLASS_MEMBER_FUNCTIONS_INCLUDED_
 
+/************************************   Two argument memory allocation with initialization   ***********************************************/
+void cu_mat::init(const size_t &r, const size_t &c)
+{
+    n_rows = r; n_cols = c;
+    if ((n_rows>0)&&(n_cols>0))
+    {
+        HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) );
+        HANDLE_ERROR( cudaMemset(p,0,n_rows*n_cols*sizeof(double)) );
+    }
+}
+/***********************************************************************************************************************/
+
+
 /************************************   Element wise division   ***********************************************/
 __global__ void elem_div(double* a, double* b, double* c, size_t n_ele)
 {
@@ -11,7 +24,11 @@ __global__ void elem_div(double* a, double* b, double* c, size_t n_ele)
 cu_mat cu_mat::div(const cu_mat &b)
 {
     confirm((n_rows == b.n_rows) && (n_cols == b.n_cols),"Error : Matrix multiplication is not possible. Matrices must have same dimensions.");
-    cu_mat c(n_rows,n_cols);
+    cu_mat c;
+    if (!del){c = (*this);}
+    else if (!b.del){c = b;}
+    else {c.init(n_rows,n_cols);}
+    c.del = 0;
     size_t n_ele = n_rows*n_cols;
     size_t n_threads = block_dim(n_ele);
     elem_div<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
@@ -31,7 +48,11 @@ __global__ void elem_mult(double* a, double* b, double* c, size_t n_ele)
 cu_mat cu_mat::mult(const cu_mat &b)
 {
     confirm((n_rows == b.n_rows) && (n_cols == b.n_cols),"Error : Matrix multiplication is not possible. Matrices must have same dimensions.");
-    cu_mat c(n_rows,n_cols);
+    cu_mat c;
+    if (!del){c = (*this);}
+    else if (!b.del){c = b;}
+    else {c.init(n_rows,n_cols);}
+    c.del = 0;
     size_t n_ele = n_rows*n_cols;
     size_t n_threads = block_dim(n_ele);
     elem_mult<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
@@ -50,7 +71,10 @@ __global__ void elem_power(double* dest, double* src, double n, size_t n_ele)
 }
 cu_mat cu_mat::pow(const double &n)
 {
-    cu_mat c(n_rows,n_cols);
+    cu_mat c;
+    if (!del){c = (*this);}
+    else {c.init(n_rows,n_cols);}
+    c.del = 0;
     size_t n_ele = n_rows*n_cols;
     size_t n_threads = block_dim(n_ele);
     elem_power<<<n_ele/n_threads,n_threads>>>(c.p,p,n,n_ele);
@@ -88,6 +112,7 @@ void cu_mat::replace(const size_t &r_begin, const size_t &r_end, const size_t &c
 /************************************   Print matrix data   ***********************************************/
 void cu_mat::get()
 {
+    del = 1;
     double *m = new double[n_rows*n_cols]();    // Allocate space on CPU memory.
     confirm(m,"Error: Memory allocation failed in 'get()'.") // Check proper allocation.
 
@@ -111,6 +136,7 @@ void cu_mat::get()
 /************************************   Print matrix to a file   ***********************************************/
 void cu_mat::print(ofstream &print)
 {
+    del = 1;
     double *m = new double[n_rows*n_cols]();    // Allocate space on CPU memory.
     confirm(m,"Error: Memory allocation failed in 'get()'.") // Check proper allocation.
 
@@ -134,12 +160,20 @@ void cu_mat::print(ofstream &print)
 
 
 /***************************************   Get number of rows   *****************************************/
-size_t cu_mat::rows(){return n_rows;}
+size_t cu_mat::rows()
+{
+    del = 1;
+    return n_rows;
+}
 /***********************************************************************************************************************/
 
 
 /***************************************   Get number of columns   *****************************************/
-size_t cu_mat::cols(){return n_cols;}
+size_t cu_mat::cols()
+{
+    del = 1;
+    return n_cols;
+}
 /***********************************************************************************************************************/
 
 #endif
