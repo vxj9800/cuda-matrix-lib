@@ -1,12 +1,13 @@
 # Matrix class for CUDA
-`parent.cu` is the main file which will be compiled.  
-`cu_matrix.cu` is the include file.  
-`cu_matrix_class.cu` contains cu_matrix class.  
-`cu_matrix_functions.cu` contains supported extra functions (randn for now).  
-`error_check.cu` has supporting functions for error handelling.  
+`cu_mat_test.cu` is the main file which will be compiled.  
+`cu_mat.cu` is the source file.  
+`cu_mat.hcu` is the cu_mat class header.  
+`error_check.cu` and `cu_error_list.cu` contains supporting functions for error handelling.  
+`block_dim.cu` is an attempt to automatically choose correct number of threads per 
+block.
+`imp_includes.hcu` is the header file that includes all the other important libraries 
+and has some macro definitions for exception handling.
 
-`parent.cu` can be compiled with following command for visual studio.  
-`nvcc parent.cu -lcublas -lcurand -lcusolver`
-
-`parent.cu` can be compiled with following command for g++.  
-`nvcc parent.cu -std=c++14 -lcublas -lcurand -lcusolver`
+The files can be compiled with following command for g++  
+`nvcc -c block_dim.cu cu_error_list.cu cu_mat.cu cu_mat_test.cu error_check.cu`  
+`nvcc block_dim.o cu_error_list.o cu_mat.o cu_mat_test.o error_check.o -lcublas -lcurand -lcusolver -o a.out`  
