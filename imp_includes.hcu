@@ -1,0 +1,46 @@
+/*
+ * imp_includes.h
+ *
+ *  Created on: Jun 2, 2019
+ *      Author: vatsal
+ */
+
+#ifndef IMP_INCLUDES_H_
+#define IMP_INCLUDES_H_
+
+#include <iostream>
+#include <cuda_runtime.h>
+#include <curand.h>
+#include <curand_kernel.h>
+#include <cublas_v2.h>
+#include <cusolverDn.h>
+#include <fstream>
+#include <iomanip>
+#include <functional>
+
+// Macro definitions
+#define look_for_errors try{
+
+#define report_errors }catch(int n){}
+
+#define confirm(cond,err)                   \
+if(!(cond))                                 \
+{                                           \
+    std::cout << "\a" << err << std::endl;  \
+    throw 1;                                \
+}
+
+#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+
+// Extra functions
+size_t block_dim(size_t n_ele);
+const char *cublasGetErrorString(cublasStatus_t err);				// cuBLAS API errors
+const char *cusolverGetErrorString(cusolverStatus_t err);			// cuSOLVER API errors
+const char *curandGetErrorString(curandStatus_t err);				// cuRAND API errors
+void HandleError( cudaError_t err,const char *file,int line );
+void HandleError( cublasStatus_t err,const char *file,int line );
+void HandleError( cusolverStatus_t err,const char *file,int line );
+void HandleError( curandStatus_t err,const char *file,int line );
+__global__ void copymat(double* dest, double* src, size_t bias, size_t src_rows, size_t main_rows_bias, size_t n_ele);
+
+#endif /* IMP_INCLUDES_HCU_ */
