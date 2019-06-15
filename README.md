@@ -11,3 +11,7 @@ and has some macro definitions for exception handling.
 The files can be compiled with following command for g++  
 `nvcc -c block_dim.cu cu_error_list.cu cu_mat.cu cu_mat_test.cu error_check.cu`  
 `nvcc block_dim.o cu_error_list.o cu_mat.o cu_mat_test.o error_check.o -lcublas -lcurand -lcusolver -o a.out`  
+
+The files can be compiled with following command for Visual C++  
+`nvcc -c block_dim.cu cu_error_list.cu cu_mat.cu cu_mat_test.cu error_check.cu`  
+`nvcc block_dim.obj cu_error_list.obj cu_mat.obj cu_mat_test.obj error_check.obj -lcublas -lcurand -lcusolver`
