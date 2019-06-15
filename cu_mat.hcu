@@ -29,7 +29,7 @@ public:
 
 
 	/***** Operators *****/ // Add an ultimate '()' operator.
-	cu_mat operator()(const cu_mat rows, const cu_mat cols);												// Sub-matrix access with 'cu_mat'
+//	cu_mat operator()(const cu_mat rows, const cu_mat cols);												// Sub-matrix access with 'cu_mat'
 	cu_mat operator()(const size_t &idx) const;																// Matrix element access based on index
 	cu_mat operator()(const size_t &r, const size_t &c) const;													// Matrix element access
 	cu_mat operator()(const size_t &r_begin, const size_t &r_end, const size_t &c_begin, const size_t &c_end) const;	// Sub-matrix access
@@ -423,5 +423,7 @@ cu_mat tan(cu_mat &&a);																		// Calculate tangent of each element
 
 cu_mat tanh(const cu_mat &a);																	// Calculate hyperbolic tangent of each element
 cu_mat tanh(cu_mat &&a);																	// Calculate hyperbolic tangent of each element
+
+void ode45(std::function<cu_mat (const cu_mat &t, const cu_mat &x, const cu_mat &params)> der, double t0, double tstep, double tf, cu_mat y0, cu_mat der_params);
 
 #endif /* CU_MAT_HCU_ */

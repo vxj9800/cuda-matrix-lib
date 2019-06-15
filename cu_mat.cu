@@ -106,6 +106,7 @@ cu_mat::cu_mat(const std::initializer_list<std::initializer_list<cu_mat>> &mat)
 cu_mat::cu_mat(const double &n) : n_rows(1), n_cols(1)
 {
     HANDLE_ERROR( cudaMalloc((void**)&p, n_rows*n_cols*sizeof(double)) ); // Allocate memory on GPU.
+//    std::cout << p << std::endl;
     HANDLE_ERROR( cudaMemcpy(p,&n,n_rows*n_cols*sizeof(double),cudaMemcpyHostToDevice) ); // Copy array from CPU to GPU
 }
 /***********************************************************************************************************************/
@@ -114,7 +115,7 @@ cu_mat::cu_mat(const double &n) : n_rows(1), n_cols(1)
 /************************************   Copy constructor   ***********************************************/
 cu_mat::cu_mat(const cu_mat &to_b_copied) : n_rows(to_b_copied.n_rows), n_cols(to_b_copied.n_cols)
 {
-    std::cout << "Copy constructor called." << std::endl;
+//    std::cout << "Copy constructor called." << std::endl;
     if ((n_rows>0)&&(n_cols>0))
     {
 		HANDLE_ERROR( cudaFree(p) );
@@ -156,7 +157,7 @@ cu_mat::cu_mat(const size_t &r, const size_t &c, const double &n=0) : n_rows(r),
 /************************************   Move constructor   ***********************************************/
 cu_mat::cu_mat(cu_mat&& to_b_moved)
 {
-    std::cout << "Move constructor called." << std::endl;
+//    std::cout << "Move constructor called." << std::endl;
     size_t nrows = to_b_moved.n_rows, ncols = to_b_moved.n_cols; double *ptr = to_b_moved.p;
     to_b_moved.n_rows = 0; to_b_moved.n_cols = 0; to_b_moved.p = NULL;
     n_rows = nrows; n_cols = ncols; p = ptr;
@@ -290,7 +291,7 @@ cu_mat cu_mat::operator()(const size_t &r_begin, const size_t &r_end, const size
 /***************************************   Assignment operator to copy 'cu_mat'   **************************************/
 cu_mat& cu_mat::operator=(const cu_mat &b)
 {
-	std::cout << "Copy assignment operator called." << std::endl;
+//	std::cout << "Copy assignment operator called." << std::endl;
 	if ((n_rows*n_cols)!=(b.n_rows*b.n_cols))
 	{
 		HANDLE_ERROR( cudaFree(p) );
@@ -306,7 +307,7 @@ cu_mat& cu_mat::operator=(const cu_mat &b)
 /***************************************   Assignment operator to move 'cu_mat'   **************************************/
 cu_mat& cu_mat::operator=(cu_mat &&b)
 {
-    std::cout << "Move assignment operator called." << std::endl;
+//    std::cout << "Move assignment operator called." << std::endl;
     n_rows = b.n_rows; b.n_rows = 0;
     n_cols = b.n_cols; b.n_cols = 0;
     HANDLE_ERROR( cudaFree(p) );
@@ -1159,7 +1160,7 @@ cu_mat::operator double()
     double val;
     // Copy data from GPU to CPU.
     HANDLE_ERROR( cudaMemcpy(&val,p,sizeof(double),cudaMemcpyDeviceToHost) );
-    return val;
+    return std::move(val);
 }
 /***********************************************************************************************************************/
 
