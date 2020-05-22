@@ -1,5 +1,5 @@
 #include "cu_mat.hcu"
-
+#define n_blocks(n_ele,n_threads) (n_ele%n_threads != 0) ? (n_ele/n_threads)+1 : n_ele/n_threads 
 /*
  * cu_mat.cu
  *
@@ -60,7 +60,7 @@ __global__ void copymat(double* dest, double* src, size_t bias, size_t src_rows,
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    dest[bias+idx+idx/src_rows*main_rows_bias] = src[idx];
+        dest[bias+idx+idx/src_rows*main_rows_bias] = src[idx];
 }
 cu_mat::cu_mat(const std::initializer_list<std::initializer_list<cu_mat>> &mat)
 {
@@ -92,7 +92,7 @@ cu_mat::cu_mat(const std::initializer_list<std::initializer_list<cu_mat>> &mat)
             for(int j = 0; j<(mat.begin()+i)->size(); ++j){
                 bias = c_sum*n_rows+r_sum; src_rows = ((mat.begin()+i)->begin()+j)->n_rows; src_cols = ((mat.begin()+i)->begin()+j)->n_cols;
                 main_rows_bias = n_rows-src_rows; n_ele = src_rows*src_cols; n_threads = block_dim(n_ele); c_sum += src_cols;
-                copymat<<<n_ele/n_threads,n_threads>>>(p,((mat.begin()+i)->begin()+j)->p,bias,src_rows,main_rows_bias,n_ele);
+                copymat<<<n_blocks(n_ele,n_threads),n_threads>>>(p,((mat.begin()+i)->begin()+j)->p,bias,src_rows,main_rows_bias,n_ele);
                 HANDLE_ERROR( cudaPeekAtLastError() );
             }
             r_sum += src_rows; c_sum = 0;
@@ -131,7 +131,7 @@ __global__ void set_data(double* p, const double n, const double n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    p[idx] = n;
+        p[idx] = n;
 }
 cu_mat::cu_mat(const size_t &r, const size_t &c, const double &n=0) : n_rows(r), n_cols(c)
 {
@@ -142,7 +142,7 @@ cu_mat::cu_mat(const size_t &r, const size_t &c, const double &n=0) : n_rows(r),
         {
             size_t n_ele = n_rows*n_cols;
             size_t n_threads = block_dim(n_ele);
-            set_data<<<n_ele/n_threads,n_threads>>>(p,n,n_ele);
+            set_data<<<n_blocks(n_ele,n_threads),n_threads>>>(p,n,n_ele);
             HANDLE_ERROR( cudaPeekAtLastError() );
         }
         else
@@ -270,7 +270,7 @@ __global__ void submat(double* dest, double* src, size_t bias, size_t dest_rows,
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    dest[idx] = src[bias+idx+idx/dest_rows*main_rows_bias];
+        dest[idx] = src[bias+idx+idx/dest_rows*main_rows_bias];
 }
 cu_mat cu_mat::operator()(const size_t &r_begin, const size_t &r_end, const size_t &c_begin, const size_t &c_end) const
 {
@@ -281,7 +281,7 @@ cu_mat cu_mat::operator()(const size_t &r_begin, const size_t &r_end, const size
     size_t main_rows_bias = n_rows-temp.n_rows;
     size_t n_ele = temp.n_rows*temp.n_cols;
     size_t n_threads = block_dim(n_ele);
-    submat<<<n_ele/n_threads,n_threads>>>(temp.p,p,bias,temp.n_rows,main_rows_bias,n_ele);
+    submat<<<n_blocks(n_ele,n_threads),n_threads>>>(temp.p,p,bias,temp.n_rows,main_rows_bias,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(temp);
 }
@@ -322,7 +322,7 @@ __global__ void const_mat_mult(double *dest, double *src, double *n, size_t n_el
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    dest[idx] = (*n)*src[idx];
+        dest[idx] = (*n)*src[idx];
 }
 cu_mat cu_mat::operator*(const cu_mat &b) const &
 {
@@ -330,14 +330,16 @@ cu_mat cu_mat::operator*(const cu_mat &b) const &
     {
         cu_mat c(b.n_rows,b.n_cols);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,b.p,p,n_ele);
+        const_mat_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else if (isscalar(b))
     {
     	cu_mat c(n_rows,n_cols);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,p,b.p,n_ele);
+        const_mat_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else
@@ -359,14 +361,16 @@ cu_mat cu_mat::operator*(cu_mat &&b) const &
     {
         cu_mat c = std::move(b);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,c.p,p,n_ele);
+        const_mat_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,c.p,p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else if (isscalar(b))
     {
     	cu_mat c(n_rows,n_cols);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,p,b.p,n_ele);
+        const_mat_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else
@@ -388,14 +392,16 @@ cu_mat cu_mat::operator*(const cu_mat &b)&&
     {
         cu_mat c(b.n_rows,b.n_cols);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,b.p,p,n_ele);
+        const_mat_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else if (isscalar(b))
     {
     	cu_mat c = std::move(*this);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,c.p,b.p,n_ele);
+        const_mat_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,c.p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else
@@ -417,14 +423,16 @@ cu_mat cu_mat::operator*(cu_mat &&b)&&
     {
         cu_mat c = std::move(b);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,c.p,p,n_ele);
+        const_mat_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,c.p,p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else if (isscalar(b))
     {
     	cu_mat c = std::move(*this);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_mat_mult<<<n_ele/n_threads,n_threads>>>(c.p,c.p,b.p,n_ele);
+        const_mat_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,c.p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else
@@ -448,13 +456,13 @@ __global__ void const_a_mat_div(double *dest, double *src_a, double *src_b, size
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    dest[idx] = (*src_a)/src_b[idx];
+        dest[idx] = (*src_a)/src_b[idx];
 }
 __global__ void const_b_mat_div(double *dest, double *src_a, double *src_b, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    dest[idx] = src_a[idx]/(*src_b);
+        dest[idx] = src_a[idx]/(*src_b);
 }
 cu_mat cu_mat::operator/(const cu_mat &b) const &
 {
@@ -462,14 +470,17 @@ cu_mat cu_mat::operator/(const cu_mat &b) const &
     {
         cu_mat c(b.n_rows,b.n_cols);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_a_mat_div<<<n_ele/n_threads,n_threads>>>(c.p,p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
+        const_a_mat_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else if (isscalar(b))
     {
         cu_mat c(n_rows,n_cols);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_b_mat_div<<<n_ele/n_threads,n_threads>>>(c.p,p,b.p,n_ele);
+        const_b_mat_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else
@@ -490,14 +501,16 @@ cu_mat cu_mat::operator/(cu_mat &&b) const &
     {
         cu_mat c = std::move(b);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_a_mat_div<<<n_ele/n_threads,n_threads>>>(c.p,p,c.p,n_ele);
+        const_a_mat_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,p,c.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else if (isscalar(b))
     {
         cu_mat c(n_rows,n_cols);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_b_mat_div<<<n_ele/n_threads,n_threads>>>(c.p,p,b.p,n_ele);
+        const_b_mat_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else
@@ -518,14 +531,16 @@ cu_mat cu_mat::operator/(const cu_mat &b) &&
     {
         cu_mat c(b.n_rows,b.n_cols);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_a_mat_div<<<n_ele/n_threads,n_threads>>>(c.p,p,b.p,n_ele);
+        const_a_mat_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else if (isscalar(b))
     {
         cu_mat c = std::move(*this);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_b_mat_div<<<n_ele/n_threads,n_threads>>>(c.p,c.p,b.p,n_ele);
+        const_b_mat_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,c.p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else
@@ -546,14 +561,16 @@ cu_mat cu_mat::operator/(cu_mat &&b) &&
     {
         cu_mat c = std::move(b);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_a_mat_div<<<n_ele/n_threads,n_threads>>>(c.p,p,c.p,n_ele);
+        const_a_mat_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,p,c.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else if (isscalar(b))
     {
         cu_mat c = std::move(*this);
         size_t n_ele = c.n_rows*c.n_cols, n_threads = block_dim(n_ele);
-        const_b_mat_div<<<n_ele/n_threads,n_threads>>>(c.p,c.p,b.p,n_ele);
+        const_b_mat_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,c.p,b.p,n_ele);
+        HANDLE_ERROR( cudaPeekAtLastError() );
         return std::move(c);
     }
     else
@@ -576,7 +593,7 @@ __global__ void addition(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = a[idx] + b[idx];
+        c[idx] = a[idx] + b[idx];
 }
 cu_mat cu_mat::operator+(const cu_mat &b) const &
 {
@@ -584,7 +601,7 @@ cu_mat cu_mat::operator+(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    addition<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    addition<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -594,7 +611,7 @@ cu_mat cu_mat::operator+(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    addition<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    addition<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -604,7 +621,7 @@ cu_mat cu_mat::operator+(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    addition<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    addition<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -614,7 +631,7 @@ cu_mat cu_mat::operator+(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    addition<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    addition<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -626,7 +643,7 @@ __global__ void negate_mat(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = a[idx] - b[idx];
+        c[idx] = a[idx] - b[idx];
 }
 cu_mat cu_mat::operator-(const cu_mat &b) const &
 {
@@ -634,7 +651,7 @@ cu_mat cu_mat::operator-(const cu_mat &b) const &
 	cu_mat c(n_rows,n_cols);
 	size_t n_ele = c.n_rows*c.n_cols;
 	size_t n_threads = block_dim(n_ele);
-    negate_mat<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    negate_mat<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -644,7 +661,7 @@ cu_mat cu_mat::operator-(cu_mat &&b) const &
 	cu_mat c = std::move(b);
 	size_t n_ele = c.n_rows*c.n_cols;
 	size_t n_threads = block_dim(n_ele);
-    negate_mat<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    negate_mat<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -654,7 +671,7 @@ cu_mat cu_mat::operator-(const cu_mat &b) &&
 	cu_mat c = std::move(*this);
 	size_t n_ele = c.n_rows*c.n_cols;
 	size_t n_threads = block_dim(n_ele);
-    negate_mat<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    negate_mat<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -664,7 +681,7 @@ cu_mat cu_mat::operator-(cu_mat &&b) &&
 	cu_mat c = std::move(*this);
 	size_t n_ele = c.n_rows*c.n_cols;
 	size_t n_threads = block_dim(n_ele);
-    negate_mat<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    negate_mat<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -676,14 +693,14 @@ __global__ void elem_negoperator(double* a, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = -a[idx];
+        c[idx] = -a[idx];
 }
 cu_mat cu_mat::operator-() const &
 {
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_negoperator<<<n_ele/n_threads,n_threads>>>(p,c.p,n_ele);
+    elem_negoperator<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -692,7 +709,7 @@ cu_mat cu_mat::operator-() &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_negoperator<<<n_ele/n_threads,n_threads>>>(c.p,c.p,n_ele);
+    elem_negoperator<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -730,7 +747,7 @@ __global__ void elem_greater(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = (a[idx] > b[idx]);
+        c[idx] = (a[idx] > b[idx]);
 }
 cu_mat cu_mat::operator>(const cu_mat &b) const &
 {
@@ -738,7 +755,7 @@ cu_mat cu_mat::operator>(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_greater<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_greater<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -748,7 +765,7 @@ cu_mat cu_mat::operator>(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_greater<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_greater<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -758,7 +775,7 @@ cu_mat cu_mat::operator>(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_greater<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_greater<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -768,7 +785,7 @@ cu_mat cu_mat::operator>(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_greater<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_greater<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -780,7 +797,7 @@ __global__ void elem_smaller(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = (a[idx] < b[idx]);
+        c[idx] = (a[idx] < b[idx]);
 }
 cu_mat cu_mat::operator<(const cu_mat &b) const &
 {
@@ -788,7 +805,7 @@ cu_mat cu_mat::operator<(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_smaller<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_smaller<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -798,7 +815,7 @@ cu_mat cu_mat::operator<(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_smaller<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_smaller<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -808,7 +825,7 @@ cu_mat cu_mat::operator<(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_smaller<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_smaller<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -818,7 +835,7 @@ cu_mat cu_mat::operator<(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_smaller<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_smaller<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -830,7 +847,7 @@ __global__ void elem_greateroreq(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = (a[idx] >= b[idx]);
+        c[idx] = (a[idx] >= b[idx]);
 }
 cu_mat cu_mat::operator>=(const cu_mat &b) const &
 {
@@ -838,7 +855,7 @@ cu_mat cu_mat::operator>=(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_greateroreq<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_greateroreq<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -848,7 +865,7 @@ cu_mat cu_mat::operator>=(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_greateroreq<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_greateroreq<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -858,7 +875,7 @@ cu_mat cu_mat::operator>=(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_greateroreq<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_greateroreq<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -868,7 +885,7 @@ cu_mat cu_mat::operator>=(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_greateroreq<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_greateroreq<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -880,7 +897,7 @@ __global__ void elem_smalleroreq(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = (a[idx] <= b[idx]);
+        c[idx] = (a[idx] <= b[idx]);
 }
 cu_mat cu_mat::operator<=(const cu_mat &b) const &
 {
@@ -888,7 +905,7 @@ cu_mat cu_mat::operator<=(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_smalleroreq<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_smalleroreq<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -898,7 +915,7 @@ cu_mat cu_mat::operator<=(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_smalleroreq<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_smalleroreq<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -908,7 +925,7 @@ cu_mat cu_mat::operator<=(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_smalleroreq<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_smalleroreq<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -918,7 +935,7 @@ cu_mat cu_mat::operator<=(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_smalleroreq<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_smalleroreq<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -930,14 +947,14 @@ __global__ void elem_notoperator(double* a, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = !a[idx];
+        c[idx] = !a[idx];
 }
 cu_mat cu_mat::operator!() const &
 {
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_notoperator<<<n_ele/n_threads,n_threads>>>(p,c.p,n_ele);
+    elem_notoperator<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -946,7 +963,7 @@ cu_mat cu_mat::operator!() &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_notoperator<<<n_ele/n_threads,n_threads>>>(c.p,c.p,n_ele);
+    elem_notoperator<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -958,7 +975,7 @@ __global__ void elem_chkeq(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = (a[idx] == b[idx]);
+        c[idx] = (a[idx] == b[idx]);
 }
 cu_mat cu_mat::operator==(const cu_mat &b) const &
 {
@@ -966,7 +983,7 @@ cu_mat cu_mat::operator==(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_chkeq<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_chkeq<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -976,7 +993,7 @@ cu_mat cu_mat::operator==(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_chkeq<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_chkeq<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -986,7 +1003,7 @@ cu_mat cu_mat::operator==(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_chkeq<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_chkeq<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -996,7 +1013,7 @@ cu_mat cu_mat::operator==(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_chkeq<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_chkeq<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1008,7 +1025,7 @@ __global__ void elem_chkneq(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = (a[idx] != b[idx]);
+        c[idx] = (a[idx] != b[idx]);
 }
 cu_mat cu_mat::operator!=(const cu_mat &b) const &
 {
@@ -1016,7 +1033,7 @@ cu_mat cu_mat::operator!=(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_chkneq<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_chkneq<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1026,7 +1043,7 @@ cu_mat cu_mat::operator!=(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_chkneq<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_chkneq<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1036,7 +1053,7 @@ cu_mat cu_mat::operator!=(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_chkneq<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_chkneq<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1046,7 +1063,7 @@ cu_mat cu_mat::operator!=(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_chkneq<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_chkneq<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1058,7 +1075,7 @@ __global__ void elem_and(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = (a[idx] && b[idx]);
+        c[idx] = (a[idx] && b[idx]);
 }
 cu_mat cu_mat::operator&&(const cu_mat &b) const &
 {
@@ -1066,7 +1083,7 @@ cu_mat cu_mat::operator&&(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_and<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_and<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1076,7 +1093,7 @@ cu_mat cu_mat::operator&&(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_and<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_and<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1086,7 +1103,7 @@ cu_mat cu_mat::operator&&(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_and<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_and<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1096,7 +1113,7 @@ cu_mat cu_mat::operator&&(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_and<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_and<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1108,7 +1125,7 @@ __global__ void elem_or(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = (a[idx] || b[idx]);
+        c[idx] = (a[idx] || b[idx]);
 }
 cu_mat cu_mat::operator||(const cu_mat &b) const &
 {
@@ -1116,7 +1133,7 @@ cu_mat cu_mat::operator||(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_or<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_or<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1126,7 +1143,7 @@ cu_mat cu_mat::operator||(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_or<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_or<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1136,7 +1153,7 @@ cu_mat cu_mat::operator||(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_or<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_or<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1146,7 +1163,7 @@ cu_mat cu_mat::operator||(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_or<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_or<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1240,7 +1257,7 @@ __global__ void elem_div(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = a[idx] / b[idx];
+        c[idx] = a[idx] / b[idx];
 }
 cu_mat cu_mat::div(const cu_mat &b) const &
 {
@@ -1248,7 +1265,7 @@ cu_mat cu_mat::div(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_div<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_div<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1258,7 +1275,7 @@ cu_mat cu_mat::div(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_div<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_div<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1268,7 +1285,7 @@ cu_mat cu_mat::div(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_div<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1278,7 +1295,7 @@ cu_mat cu_mat::div(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_div<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_div<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1290,7 +1307,7 @@ __global__ void elem_mult(double* a, double* b, double* c, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    c[idx] = a[idx] * b[idx];
+        c[idx] = a[idx] * b[idx];
 }
 cu_mat cu_mat::mult(const cu_mat &b) const &
 {
@@ -1298,7 +1315,7 @@ cu_mat cu_mat::mult(const cu_mat &b) const &
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_mult<<<n_ele/n_threads,n_threads>>>(p,b.p,c.p,n_ele);
+    elem_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1308,7 +1325,7 @@ cu_mat cu_mat::mult(cu_mat &&b) const &
     cu_mat c = std::move(b);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_mult<<<n_ele/n_threads,n_threads>>>(p,c.p,c.p,n_ele);
+    elem_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(p,c.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1318,7 +1335,7 @@ cu_mat cu_mat::mult(const cu_mat &b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_mult<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1328,7 +1345,7 @@ cu_mat cu_mat::mult(cu_mat &&b) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_mult<<<n_ele/n_threads,n_threads>>>(c.p,b.p,c.p,n_ele);
+    elem_mult<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,b.p,c.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1340,14 +1357,14 @@ __global__ void elem_power(double* dest, double* src, double n, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    dest[idx] = pow(src[idx],n);
+        dest[idx] = pow(src[idx],n);
 }
 cu_mat cu_mat::pow(const double &n) const &
 {
     cu_mat c(n_rows,n_cols);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_power<<<n_ele/n_threads,n_threads>>>(c.p,p,n,n_ele);
+    elem_power<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,p,n,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1356,7 +1373,7 @@ cu_mat cu_mat::pow(const double &n) &&
     cu_mat c = std::move(*this);
     size_t n_ele = c.n_rows*c.n_cols;
     size_t n_threads = block_dim(n_ele);
-    elem_power<<<n_ele/n_threads,n_threads>>>(c.p,c.p,n,n_ele);
+    elem_power<<<n_blocks(n_ele,n_threads),n_threads>>>(c.p,c.p,n,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(c);
 }
@@ -1369,7 +1386,7 @@ void cu_mat::replace(const size_t &r, const size_t &c, const cu_mat &n)
     confirm((n.n_rows==1) && (n.n_cols==1),"Error: Value being replaced with has to be scalar.");
     size_t bias = c*n_rows+r, src_rows = 1, src_cols = 1;
     size_t main_rows_bias = n_rows-src_rows, n_ele = src_rows*src_cols, n_threads = block_dim(n_ele);
-    copymat<<<n_ele/n_threads,n_threads>>>(p,n.p,bias,src_rows,main_rows_bias,n_ele);
+    copymat<<<n_blocks(n_ele,n_threads),n_threads>>>(p,n.p,bias,src_rows,main_rows_bias,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
 }
 /***********************************************************************************************************************/
@@ -1382,7 +1399,7 @@ void cu_mat::replace(const size_t &r_begin, const size_t &r_end, const size_t &c
     confirm((n.n_rows==r_end-r_begin+1) && (n.n_cols==c_end-c_begin+1),"Error: Unable to replace the data due to size mismatch.");
     size_t bias = (c_begin-1)*n_rows+r_begin-1, src_rows = n.n_rows, src_cols = n.n_cols;
     size_t main_rows_bias = n_rows-src_rows, n_ele = src_rows*src_cols, n_threads = block_dim(n_ele);
-    copymat<<<n_ele/n_threads,n_threads>>>(p,n.p,bias,src_rows,main_rows_bias,n_ele);
+    copymat<<<n_blocks(n_ele,n_threads),n_threads>>>(p,n.p,bias,src_rows,main_rows_bias,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
 }
 /***********************************************************************************************************************/
@@ -1548,16 +1565,14 @@ __global__ void eye_mat(double* p, const int r, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         p[idx*r+idx] = 1.0;
-    }
 }
 cu_mat eye(const size_t &r, const size_t &c)
 {
     cu_mat temp(r,c);
     size_t n_ele = min(r,c);
     size_t n_threads = block_dim(n_ele);
-    eye_mat<<<n_ele/n_threads,n_threads>>>(temp.p,r,n_ele);
+    eye_mat<<<n_blocks(n_ele,n_threads),n_threads>>>(temp.p,r,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(temp);
 }
@@ -1657,14 +1672,14 @@ __global__ void mat_trans(double* a, double* b, size_t rows, size_t cols, size_t
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     size_t r = idx%rows, c = idx/rows;
     if (idx<n_ele)
-    a[c+r*cols] = b[idx];
+        a[c+r*cols] = b[idx];
 }
 cu_mat trans(cu_mat &a)
 {
     cu_mat tmp(a.n_cols,a.n_rows);
     size_t n_ele = tmp.n_rows*tmp.n_cols;
     size_t n_threads = block_dim(n_ele);
-    mat_trans<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,a.n_rows,a.n_cols,n_ele);
+    mat_trans<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,a.n_rows,a.n_cols,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1678,7 +1693,7 @@ cu_mat horzcat(cu_mat &a, cu_mat &b)
     cu_mat tmp(a.n_rows,a.n_cols+b.n_cols);
     HANDLE_ERROR( cudaMemcpy(tmp.p,a.p,a.n_rows*a.n_cols*sizeof(double),cudaMemcpyDeviceToDevice) );
     size_t n_ele = b.n_rows*b.n_cols, n_threads = block_dim(n_ele);
-    copymat<<<n_ele/n_threads,n_threads>>>(tmp.p,b.p,a.n_cols*tmp.n_rows,tmp.n_rows,0,n_ele);
+    copymat<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,b.p,a.n_cols*tmp.n_rows,tmp.n_rows,0,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1691,16 +1706,17 @@ cu_mat horzcat(cu_mat &a, cu_mat &b)
     // size_t main_rows_bias = n_rows-temp.n_rows;
     // size_t n_ele = temp.n_rows*temp.n_cols;
     // size_t n_threads = block_dim(n_ele);
-    // copymat<<<n_ele/n_threads,n_threads>>>(p,temp.p,bias,temp.n_rows,main_rows_bias,n_ele);
+    // copymat<<<n_blocks(n_ele,n_threads),n_threads>>>(p,temp.p,bias,temp.n_rows,main_rows_bias,n_ele);
     // HANDLE_ERROR( cudaPeekAtLastError() );
 cu_mat vertcat(cu_mat &a, cu_mat &b)
 {
     confirm(a.n_cols==b.n_cols,"Error: Dimensions of arrays being vertically concatenated are not consistent.");
     cu_mat tmp(a.n_rows+b.n_rows,a.n_cols);
     size_t n_ele = a.n_rows*a.n_cols, n_threads = block_dim(n_ele);
-    copymat<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,0,a.n_rows,tmp.n_rows-a.n_rows,n_ele);
+    copymat<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,0,a.n_rows,tmp.n_rows-a.n_rows,n_ele);
+    HANDLE_ERROR( cudaPeekAtLastError() );
     n_ele = b.n_rows*b.n_cols; n_threads = block_dim(n_ele);
-    copymat<<<n_ele/n_threads,n_threads>>>(tmp.p,b.p,a.n_rows,b.n_rows,tmp.n_rows-b.n_rows,n_ele);
+    copymat<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,b.p,a.n_rows,b.n_rows,tmp.n_rows-b.n_rows,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1712,9 +1728,7 @@ __global__ void ss_mat_fill(double* dest, double i, double step, size_t n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if(idx<n_ele)
-    {
         dest[idx] = i+step*idx;
-    }
 }
 cu_mat stepspace(const double &i, const double &f, const double &step=1)
 {
@@ -1725,7 +1739,7 @@ cu_mat stepspace(const double &i, const double &f, const double &step=1)
     	n = 0;
     cu_mat tmp(n,1);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    ss_mat_fill<<<n_ele/n_threads,n_threads>>>(tmp.p,i,step,n_ele);
+    ss_mat_fill<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,i,step,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1823,15 +1837,13 @@ __global__ void mat_arccosine(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = acos(src[idx]);
-    }
 }
 cu_mat acos(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_arccosine<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_arccosine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -1839,7 +1851,7 @@ cu_mat acos(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_arccosine<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_arccosine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1851,15 +1863,13 @@ __global__ void mat_archypcosine(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = acosh(src[idx]);
-    }
 }
 cu_mat acosh(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_archypcosine<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_archypcosine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -1867,7 +1877,7 @@ cu_mat acosh(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_archypcosine<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_archypcosine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1879,15 +1889,13 @@ __global__ void mat_arcsine(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = asin(src[idx]);
-    }
 }
 cu_mat asin(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_arcsine<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_arcsine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -1895,7 +1903,7 @@ cu_mat asin(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_arcsine<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_arcsine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1907,15 +1915,13 @@ __global__ void mat_archypsine(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = asinh(src[idx]);
-    }
 }
 cu_mat asinh(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_archypsine<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_archypsine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -1923,7 +1929,7 @@ cu_mat asinh(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_archypsine<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_archypsine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1935,15 +1941,13 @@ __global__ void mat_arctan(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = atan(src[idx]);
-    }
 }
 cu_mat atan(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_arctan<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_arctan<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -1951,7 +1955,7 @@ cu_mat atan(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_arctan<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_arctan<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1963,16 +1967,14 @@ __global__ void mat_arctangent2(double* dest, double* src_a, double* src_b, cons
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = atan2(src_a[idx],src_b[idx]);
-    }
 }
 cu_mat atan2(const cu_mat &y, const cu_mat &x)
 {
     confirm((y.n_rows==x.n_rows)&&(y.n_cols==x.n_cols),"Error: 'atan2' cannot be used. Both matrices has to be of the same size.")
     cu_mat tmp(x.rows(),x.cols());
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_arctangent2<<<n_ele/n_threads,n_threads>>>(tmp.p,y.p,x.p,n_ele);
+    mat_arctangent2<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,y.p,x.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1981,7 +1983,7 @@ cu_mat atan2(const cu_mat &y, cu_mat &&x)
     confirm((y.n_rows==x.n_rows)&&(y.n_cols==x.n_cols),"Error: 'atan2' cannot be used. Both matrices has to be of the same size.")
     cu_mat tmp = std::move(x);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_arctangent2<<<n_ele/n_threads,n_threads>>>(tmp.p,y.p,tmp.p,n_ele);
+    mat_arctangent2<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,y.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1990,7 +1992,7 @@ cu_mat atan2(cu_mat &&y, const cu_mat &x)
     confirm((y.n_rows==x.n_rows)&&(y.n_cols==x.n_cols),"Error: 'atan2' cannot be used. Both matrices has to be of the same size.")
     cu_mat tmp = std::move(y);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_arctangent2<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,x.p,n_ele);
+    mat_arctangent2<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,x.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -1999,7 +2001,7 @@ cu_mat atan2(cu_mat &&y, cu_mat &&x)
     confirm((y.n_rows==x.n_rows)&&(y.n_cols==x.n_cols),"Error: 'atan2' cannot be used. Both matrices has to be of the same size.")
     cu_mat tmp = std::move(y);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_arctangent2<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,x.p,n_ele);
+    mat_arctangent2<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,x.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2011,15 +2013,13 @@ __global__ void mat_archyptan(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = atanh(src[idx]);
-    }
 }
 cu_mat atanh(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_archyptan<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_archyptan<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2027,7 +2027,7 @@ cu_mat atanh(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_archyptan<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_archyptan<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2039,15 +2039,13 @@ __global__ void mat_ceiling(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = ceil(src[idx]);
-    }
 }
 cu_mat ceil(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_ceiling<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_ceiling<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2055,7 +2053,7 @@ cu_mat ceil(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_ceiling<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_ceiling<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2067,15 +2065,13 @@ __global__ void mat_cosine(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = cos(src[idx]);
-    }
 }
 cu_mat cos(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_cosine<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_cosine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2083,7 +2079,7 @@ cu_mat cos(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_cosine<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_cosine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2095,15 +2091,13 @@ __global__ void mat_hypcosine(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = cosh(src[idx]);
-    }
 }
 cu_mat cosh(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_hypcosine<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_hypcosine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2111,7 +2105,7 @@ cu_mat cosh(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_hypcosine<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_hypcosine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2123,15 +2117,13 @@ __global__ void mat_exponent(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = exp(src[idx]);
-    }
 }
 cu_mat exp(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_exponent<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_exponent<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2139,7 +2131,7 @@ cu_mat exp(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_exponent<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_exponent<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2151,15 +2143,13 @@ __global__ void mat_exponent10(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = exp10(src[idx]);
-    }
 }
 cu_mat exp10(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_exponent10<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_exponent10<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2167,7 +2157,7 @@ cu_mat exp10(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_exponent10<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_exponent10<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2179,15 +2169,13 @@ __global__ void mat_exponent2(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = exp2(src[idx]);
-    }
 }
 cu_mat exp2(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_exponent2<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_exponent2<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2195,7 +2183,7 @@ cu_mat exp2(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_exponent2<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_exponent2<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2207,15 +2195,13 @@ __global__ void mat_absolute(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = fabs(src[idx]);
-    }
 }
 cu_mat abs(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_absolute<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_absolute<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2223,7 +2209,7 @@ cu_mat abs(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_absolute<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_absolute<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2235,15 +2221,13 @@ __global__ void mat_floor(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = floor(src[idx]);
-    }
 }
 cu_mat floor(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_floor<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_floor<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2251,7 +2235,7 @@ cu_mat floor(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_floor<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_floor<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2263,16 +2247,14 @@ __global__ void mat_modulo(double* dest, double* src_a, double* src_b, const int
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = fmod(src_a[idx],src_b[idx]);
-    }
 }
 cu_mat mod(const cu_mat &a, const cu_mat &b)
 {
     confirm((a.n_rows==b.n_rows)&&(a.n_cols==b.n_cols),"Error: 'mod' cannot be calculated. Both matrices has to be of same size.")
     cu_mat tmp(a.rows(),a.cols());
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_modulo<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,b.p,n_ele);
+    mat_modulo<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,b.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2281,7 +2263,7 @@ cu_mat mod(const cu_mat &a, cu_mat &&b)
     confirm((a.n_rows==b.n_rows)&&(a.n_cols==b.n_cols),"Error: 'mod' cannot be calculated. Both matrices has to be of same size.")
     cu_mat tmp = std::move(b);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_modulo<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,tmp.p,n_ele);
+    mat_modulo<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2290,7 +2272,7 @@ cu_mat mod(cu_mat &&a, const cu_mat &b)
     confirm((a.n_rows==b.n_rows)&&(a.n_cols==b.n_cols),"Error: 'mod' cannot be calculated. Both matrices has to be of same size.")
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_modulo<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,b.p,n_ele);
+    mat_modulo<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,b.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2299,7 +2281,7 @@ cu_mat mod(cu_mat &&a, cu_mat &&b)
     confirm((a.n_rows==b.n_rows)&&(a.n_cols==b.n_cols),"Error: 'mod' cannot be calculated. Both matrices has to be of same size.")
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_modulo<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,b.p,n_ele);
+    mat_modulo<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,b.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2311,15 +2293,13 @@ __global__ void mat_isfinite(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = isfinite(src[idx]);
-    }
 }
 cu_mat isfinite(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_isfinite<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_isfinite<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2327,7 +2307,7 @@ cu_mat isfinite(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_isfinite<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_isfinite<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2339,15 +2319,13 @@ __global__ void mat_isinfinite(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = isinf(src[idx]);
-    }
 }
 cu_mat isinf(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_isinfinite<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_isinfinite<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2355,7 +2333,7 @@ cu_mat isinf(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_isinfinite<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_isinfinite<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2367,15 +2345,13 @@ __global__ void mat_isnan(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = isnan(src[idx]);
-    }
 }
 cu_mat isnan(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_isnan<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_isnan<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2383,7 +2359,7 @@ cu_mat isnan(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_isnan<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_isnan<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2435,15 +2411,13 @@ __global__ void mat_log_e(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = log(src[idx]);
-    }
 }
 cu_mat log(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_log_e<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_log_e<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2451,7 +2425,7 @@ cu_mat log(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_log_e<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_log_e<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2463,15 +2437,13 @@ __global__ void mat_log_10(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = log10(src[idx]);
-    }
 }
 cu_mat log10(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_log_10<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_log_10<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2479,7 +2451,7 @@ cu_mat log10(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_log_10<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_log_10<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2491,15 +2463,13 @@ __global__ void mat_log_2(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = log2(src[idx]);
-    }
 }
 cu_mat log2(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_log_2<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_log_2<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2507,7 +2477,7 @@ cu_mat log2(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_log_2<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_log_2<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2519,16 +2489,14 @@ __global__ void mat_remainder(double* dest, double* src_a, double* src_b, const 
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = remainder(src_a[idx],src_b[idx]);
-    }
 }
 cu_mat rem(const cu_mat &a, const cu_mat &b)
 {
     confirm((a.n_rows==b.n_rows)&&(a.n_cols==b.n_cols),"Error: 'rem' cannot be calculated. Both matrices has to be of same size.")
     cu_mat tmp(a.rows(),a.cols());
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_remainder<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,b.p,n_ele);
+    mat_remainder<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,b.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2537,7 +2505,7 @@ cu_mat rem(const cu_mat &a, cu_mat &&b)
     confirm((a.n_rows==b.n_rows)&&(a.n_cols==b.n_cols),"Error: 'rem' cannot be calculated. Both matrices has to be of same size.")
     cu_mat tmp = std::move(b);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_remainder<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,tmp.p,n_ele);
+    mat_remainder<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2546,7 +2514,7 @@ cu_mat rem(cu_mat &&a, const cu_mat &b)
     confirm((a.n_rows==b.n_rows)&&(a.n_cols==b.n_cols),"Error: 'rem' cannot be calculated. Both matrices has to be of same size.")
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_remainder<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,b.p,n_ele);
+    mat_remainder<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,b.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2555,7 +2523,7 @@ cu_mat rem(cu_mat &&a, cu_mat &&b)
     confirm((a.n_rows==b.n_rows)&&(a.n_cols==b.n_cols),"Error: 'rem' cannot be calculated. Both matrices has to be of same size.")
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_remainder<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,b.p,n_ele);
+    mat_remainder<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,b.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2567,15 +2535,13 @@ __global__ void mat_round(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = round(src[idx]);
-    }
 }
 cu_mat round(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_round<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_round<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2583,7 +2549,7 @@ cu_mat round(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_round<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_round<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2595,18 +2561,16 @@ __global__ void mat_signbit(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         if(signbit(src[idx])==0)
             dest[idx] = 1;
         else
             dest[idx] = -1;
-    }
 }
 cu_mat sign(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_signbit<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_signbit<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2614,7 +2578,7 @@ cu_mat sign(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_signbit<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_signbit<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2626,15 +2590,13 @@ __global__ void mat_sine(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = sin(src[idx]);
-    }
 }
 cu_mat sin(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_sine<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_sine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2642,7 +2604,7 @@ cu_mat sin(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_sine<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_sine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2654,15 +2616,13 @@ __global__ void mat_hypsine(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = sinh(src[idx]);
-    }
 }
 cu_mat sinh(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_hypsine<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_hypsine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2670,7 +2630,7 @@ cu_mat sinh(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_hypsine<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_hypsine<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2682,15 +2642,13 @@ __global__ void mat_sqrt(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = sqrt(src[idx]);
-    }
 }
 cu_mat sqrt(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_sqrt<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_sqrt<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2698,7 +2656,7 @@ cu_mat sqrt(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_sqrt<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_sqrt<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2710,15 +2668,13 @@ __global__ void mat_tangent(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = tan(src[idx]);
-    }
 }
 cu_mat tan(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_tangent<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_tangent<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2726,7 +2682,7 @@ cu_mat tan(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_tangent<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_tangent<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }
@@ -2738,15 +2694,13 @@ __global__ void mat_hyptangent(double* dest, double* src, const int n_ele)
 {
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx<n_ele)
-    {
         dest[idx] = tanh(src[idx]);
-    }
 }
 cu_mat tanh(const cu_mat &a)
 {
 	cu_mat tmp(a.rows(),a.cols());
 	size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-	mat_hyptangent<<<n_ele/n_threads,n_threads>>>(tmp.p,a.p,n_ele);
+	mat_hyptangent<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,a.p,n_ele);
 	HANDLE_ERROR( cudaPeekAtLastError() );
 	return std::move(tmp);
 }
@@ -2754,7 +2708,7 @@ cu_mat tanh(cu_mat &&a)
 {
     cu_mat tmp = std::move(a);
     size_t n_ele = tmp.n_rows*tmp.n_cols, n_threads = block_dim(n_ele);
-    mat_hyptangent<<<n_ele/n_threads,n_threads>>>(tmp.p,tmp.p,n_ele);
+    mat_hyptangent<<<n_blocks(n_ele,n_threads),n_threads>>>(tmp.p,tmp.p,n_ele);
     HANDLE_ERROR( cudaPeekAtLastError() );
     return std::move(tmp);
 }

@@ -8,9 +8,11 @@
 #include "cu_mat.hcu"
 #include <ctime>
 
+#define numEquations 3200000
+
 cu_mat der(const cu_mat &t, const cu_mat &x, const cu_mat &params)
 {
-	return std::move(cos(t));
+	return std::move(cos(t*ones(numEquations,1)));
 }
 
 int main()
@@ -25,8 +27,13 @@ int main()
 //	b.get(); c.get();
 //	cu_mat A = randn(5), b = randn(5,1);
 //	cu_mat c = mld(A,b);
-	cu_mat x0 = 0, params = 0;
-	ode45(der,0,0.001,5,x0,params);
+	cu_mat x0 = zeros(numEquations,1), params = 0;
+	ode45(der,0,5,x0,params);
+	// static cu_mat t = stepspace(0,5,0.001);
+	// static cu_mat t_start = 0;
+	// t_start = t(1,1);
+	// size_t n_ele = 5001, tc = block_dim(n_ele);
+	// std::cout << "Threads per block: " << tc << std::endl;
 
 	report_errors;
 	clock_t end = clock();
